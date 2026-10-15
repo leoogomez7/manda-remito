@@ -35,11 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const appOrigin = typeof window === "undefined" ? "" : window.location.origin;
+  const configuredDomain = AUTH_CONFIG.domain.replace(/\/+$/, "");
+  const domain = /^https?:\/\//i.test(configuredDomain)
+    ? configuredDomain
+    : `https://${configuredDomain}`;
 
   return (
     <KindeProvider
       clientId={AUTH_CONFIG.clientId}
-      domain={AUTH_CONFIG.domain}
+      domain={domain}
       redirectUri={appOrigin}
       logoutUri={appOrigin}
     >
@@ -58,7 +62,17 @@ function KindeSession({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         user: user ?? null,
-        login: () => login(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {}),
+        login: async () => {
+          try {
+            await login(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {});
+          } catch (error) {
+            console.error("No se pudo iniciar sesión con Kinde", error);
+            const detail = error instanceof Error ? `\n\nDetalle: ${error.message}` : "";
+            window.alert(
+              `Kinde no pudo iniciar sesión. Verificá DOMAIN_USER, AUTH_USER y las URLs autorizadas de callback en Kinde.${detail}`,
+            );
+          }
+        },
         logout: () => logout(),
       }}
     >
