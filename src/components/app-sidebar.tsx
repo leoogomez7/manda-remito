@@ -129,7 +129,7 @@ export function AppSidebar() {
       </SidebarFooter>
     </Sidebar>
     <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
-      <DialogContent className="glass border-gradient sm:max-w-md">
+      <DialogContent className="bg-background shadow-2xl sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-gradient">Acceso a Manda Remito</DialogTitle>
           <DialogDescription>
