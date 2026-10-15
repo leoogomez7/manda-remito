@@ -339,7 +339,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
   // VISTA CONDICIONAL: Factura recién generada con éxito
   if (generatedInvoice) {
     return (
-      <div className="container mx-auto max-w-6xl px-4 py-8">
+      <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
         <div className="glass rounded-2xl p-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -443,7 +443,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
   }
 
     return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
       {/* Título Principal */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}

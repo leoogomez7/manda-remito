@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Archive, LayoutDashboard, FileCheck, FilePlus2 } from "lucide-react";
+import { Archive, LayoutDashboard, FileCheck, FilePlus2, Trash2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ const items = [
   { title: "Nuevo remito", url: "/nueva", icon: FilePlus2 },
   { title: "Remitos borradores", url: "/borradores", icon: Archive },
   { title: "Remitos emitidos", url: "/historial", icon: FileCheck },
+  { title: "Papelera", url: "/papelera", icon: Trash2 },
 ];
 
 export function AppSidebar() {
@@ -36,8 +37,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-3 px-2 py-3 group-data-[collapsible=icon]:-mx-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0">
+      <SidebarHeader className="h-14 min-h-14 shrink-0 justify-center p-0">
+        <div className="flex h-full w-full items-center gap-3 px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
           <img
             src={logo}
             alt="Manda Remito"

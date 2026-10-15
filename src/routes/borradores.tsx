@@ -3,7 +3,17 @@ import { useEffect, useState } from "react";
 import { Archive, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatMoney, getDrafts, removeDraft, saveDraft, type Invoice } from "@/lib/invoices";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { formatMoney, getDrafts, moveDraftToTrash, saveDraft, type Invoice } from "@/lib/invoices";
 
 const sampleDraft: Invoice = {
   id: "__sample-draft",
@@ -56,6 +66,7 @@ function BorradoresPage() {
   const navigate = useNavigate();
   const [drafts, setDrafts] = useState<Invoice[]>([]);
   const [q, setQ] = useState("");
+  const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     setDrafts([sampleDraft, ...getDrafts()]);
@@ -92,15 +103,18 @@ function BorradoresPage() {
 
   const handleDelete = (id: string) => {
     if (id.startsWith("__sample")) return;
+    setDraftToDelete(id);
+  };
 
-    const confirmed = window.confirm("¿Deseas eliminar este borrador?");
-    if (!confirmed) return;
-    removeDraft(id);
+  const confirmDelete = () => {
+    if (!draftToDelete) return;
+    moveDraftToTrash(draftToDelete);
     setDrafts([sampleDraft, ...getDrafts()]);
+    setDraftToDelete(null);
   };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
@@ -142,22 +156,22 @@ function BorradoresPage() {
             </Button>
           </div>
           <div className="overflow-x-auto md:overflow-visible">
-            <table className="hidden min-w-full text-sm md:table">
+            <table className="hidden min-w-full text-center text-sm md:table">
               <thead className="bg-background/40">
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3 text-left">Número</th>
-                  <th className="px-4 py-3 text-left">Cliente</th>
-                  <th className="px-4 py-3 text-left">Fecha</th>
-                  <th className="px-4 py-3 text-left">Tipo</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3"></th>
+                  <th className="px-4 py-3">Número</th>
+                  <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Fecha</th>
+                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((draft) => (
                   <tr key={draft.id} className="border-t border-border/40 hover:bg-card/40">
                     <td className="px-4 py-3 font-mono text-color:var(--neon-cyan)">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         <span>{draft.number}</span>
                         {isSampleDraft(draft) && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
@@ -171,11 +185,11 @@ function BorradoresPage() {
                       {new Date(draft.createdAt).toLocaleDateString("es-AR")}
                     </td>
                     <td className="px-4 py-3 capitalize">{draft.type === "factura" ? "Remito" : "Recibo"}</td>
-                    <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                    <td className="px-4 py-3 font-semibold tabular-nums">
                       {formatMoney(draft.total, draft.currency)}
                     </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
                         {!isSampleDraft(draft) ? (
                           <>
                             <Button
@@ -207,8 +221,8 @@ function BorradoresPage() {
 
             <div className="divide-y divide-border/40 md:hidden">
               {filtered.map((draft) => (
-                <div key={draft.id} className="p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div key={draft.id} className="p-4 text-center">
+                  <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                     <div>
                       <p className="font-mono text-sm text-color:var(--neon-cyan)">{draft.number}</p>
                       <p className="mt-1 font-semibold">{draft.client.name || "—"}</p>
@@ -216,11 +230,11 @@ function BorradoresPage() {
                         {new Date(draft.createdAt).toLocaleDateString("es-AR")} · {draft.type === "factura" ? "Remito" : "Recibo"}
                       </p>
                     </div>
-                    <p className="text-right font-semibold tabular-nums">
+                    <p className="font-semibold tabular-nums">
                       {formatMoney(draft.total, draft.currency)}
                     </p>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
                     {!isSampleDraft(draft) ? (
                       <>
                         <Button
@@ -251,6 +265,23 @@ function BorradoresPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={draftToDelete !== null} onOpenChange={(open) => !open && setDraftToDelete(null)}>
+        <AlertDialogContent className="border-border/70 bg-background">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enviar borrador a la papelera</AlertDialogTitle>
+            <AlertDialogDescription>
+              El borrador permanecerá en la papelera durante 5 días. Después se eliminará definitivamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Mover a papelera
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

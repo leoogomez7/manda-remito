@@ -42,6 +42,15 @@ const KEY_INVOICES = "mf:invoices";
 const KEY_COUNTER = "mf:counter";
 const KEY_DRAFT = "mf:draft";
 const KEY_DRAFTS = "mf:drafts";
+const KEY_TRASH = "mf:trash";
+const TRASH_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
+
+export interface TrashEntry {
+  id: string;
+  kind: "invoice" | "draft";
+  deletedAt: string;
+  records: Invoice[];
+}
 
 // Variables de caché para estabilizar las referencias en React
 let _cachedInvoices: Invoice[] | null = null;
@@ -130,6 +139,24 @@ export function removeInvoice(id: string) {
       (item) => item.id !== rootInvoice.id && !isLinkedToInvoice(item, rootInvoice.id, invoices),
     ),
   );
+}
+
+export function moveInvoiceToTrash(id: string) {
+  const invoices = getInvoices();
+  const invoice = invoices.find((item) => item.id === id);
+  if (!invoice) return;
+
+  const rootInvoice = findRootInvoice(invoice, invoices);
+  const records = invoices.filter(
+    (item) => item.id === rootInvoice.id || isLinkedToInvoice(item, rootInvoice.id, invoices),
+  );
+  addTrashEntry({
+    id: crypto.randomUUID(),
+    kind: "invoice",
+    deletedAt: new Date().toISOString(),
+    records,
+  });
+  saveInvoices(invoices.filter((item) => !records.some((record) => record.id === item.id)));
 }
 
 export function updateInvoice(invoice: Invoice) {
@@ -224,6 +251,57 @@ export function addDraft(draft: Invoice) {
 
 export function removeDraft(id: string) {
   saveDrafts(getDrafts().filter((d) => d.id !== id));
+}
+
+export function moveDraftToTrash(id: string) {
+  const draft = getDrafts().find((item) => item.id === id);
+  if (!draft) return;
+  addTrashEntry({
+    id: crypto.randomUUID(),
+    kind: "draft",
+    deletedAt: new Date().toISOString(),
+    records: [draft],
+  });
+  removeDraft(id);
+}
+
+export function getTrash(): TrashEntry[] {
+  if (typeof window === "undefined") return [];
+  const entries = safeParse<TrashEntry[]>(localStorage.getItem(KEY_TRASH), []);
+  const activeEntries = entries.filter((entry) => {
+    const deletedAt = Date.parse(entry.deletedAt);
+    return Number.isFinite(deletedAt) && Date.now() - deletedAt < TRASH_RETENTION_MS;
+  });
+  if (activeEntries.length !== entries.length) saveTrash(activeEntries);
+  return activeEntries;
+}
+
+export function restoreTrashEntry(id: string) {
+  const entries = getTrash();
+  const entry = entries.find((item) => item.id === id);
+  if (!entry) return;
+
+  if (entry.kind === "invoice") {
+    const currentIds = new Set(getInvoices().map((invoice) => invoice.id));
+    saveInvoices([...entry.records.filter((invoice) => !currentIds.has(invoice.id)), ...getInvoices()]);
+  } else {
+    const currentIds = new Set(getDrafts().map((draft) => draft.id));
+    saveDrafts([...entry.records.filter((draft) => !currentIds.has(draft.id)), ...getDrafts()]);
+  }
+  saveTrash(entries.filter((item) => item.id !== id));
+}
+
+export function permanentlyDeleteTrashEntry(id: string) {
+  saveTrash(getTrash().filter((entry) => entry.id !== id));
+}
+
+function addTrashEntry(entry: TrashEntry) {
+  saveTrash([entry, ...getTrash()]);
+}
+
+function saveTrash(entries: TrashEntry[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(KEY_TRASH, JSON.stringify(entries));
 }
 
 export function updateDraft(updated: Invoice) {

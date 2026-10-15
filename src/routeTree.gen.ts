@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BorradoresRouteImport } from './routes/borradores'
 import { Route as HistorialRouteImport } from './routes/historial'
 import { Route as NuevaRouteImport } from './routes/nueva'
+import { Route as PapeleraRouteImport } from './routes/papelera'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,25 @@ const NuevaRoute = NuevaRouteImport.update({
   path: '/nueva',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PapeleraRoute = PapeleraRouteImport.update({
+  id: '/papelera',
+  path: '/papelera',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/borradores': typeof BorradoresRoute
   '/historial': typeof HistorialRoute
   '/nueva': typeof NuevaRoute
+  '/papelera': typeof PapeleraRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/borradores': typeof BorradoresRoute
   '/historial': typeof HistorialRoute
   '/nueva': typeof NuevaRoute
+  '/papelera': typeof PapeleraRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/borradores': typeof BorradoresRoute
   '/historial': typeof HistorialRoute
   '/nueva': typeof NuevaRoute
+  '/papelera': typeof PapeleraRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/borradores' | '/historial' | '/nueva'
+  fullPaths: '/' | '/borradores' | '/historial' | '/nueva' | '/papelera'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/borradores' | '/historial' | '/nueva'
-  id: '__root__' | '/' | '/borradores' | '/historial' | '/nueva'
+  to: '/' | '/borradores' | '/historial' | '/nueva' | '/papelera'
+  id: '__root__' | '/' | '/borradores' | '/historial' | '/nueva' | '/papelera'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   BorradoresRoute: typeof BorradoresRoute
   HistorialRoute: typeof HistorialRoute
   NuevaRoute: typeof NuevaRoute
+  PapeleraRoute: typeof PapeleraRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NuevaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/papelera': {
+      id: '/papelera'
+      path: '/papelera'
+      fullPath: '/papelera'
+      preLoaderRoute: typeof PapeleraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   BorradoresRoute: BorradoresRoute,
   HistorialRoute: HistorialRoute,
   NuevaRoute: NuevaRoute,
+  PapeleraRoute: PapeleraRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

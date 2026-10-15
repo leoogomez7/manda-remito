@@ -5,13 +5,23 @@ import { Download, FileText, Printer, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { PASSWORD } from "@/lib/env";
 import {
   formatMoney,
   getInvoices,
   PAYMENT_LABEL,
-  removeInvoice,
+  moveInvoiceToTrash,
   type Invoice,
 } from "@/lib/invoices";
 
@@ -100,11 +110,12 @@ function HistorialPage() {
   const [list, setList] = useState<Invoice[]>([]);
   const [q, setQ] = useState("");
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
+     const [passwordInput, setPasswordInput] = useState<string>("");
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedPdfAction, setSelectedPdfAction] = useState<"download" | "print" | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     setList([...sampleHistorialInvoices, ...getInvoices()]);
@@ -123,14 +134,15 @@ function HistorialPage() {
 
   const handleDelete = (id: string) => {
     if (id.startsWith("__sample")) return;
+    setInvoiceToDelete(id);
+  };
 
-    const confirmed = window.confirm(
-      "¿Deseas eliminar este remito y todos los remitos relacionados a él?"
-    );
-    if (!confirmed) return;
-    removeInvoice(id);
+  const confirmDelete = () => {
+    if (!invoiceToDelete) return;
+    moveInvoiceToTrash(invoiceToDelete);
     setList([...sampleHistorialInvoices, ...getInvoices()]);
-    toast.success("Remito eliminado");
+    setInvoiceToDelete(null);
+    toast.success("Remito movido a la papelera");
   };
 
   const clearPasswordDialog = () => {
@@ -194,7 +206,7 @@ function HistorialPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl px-4 py-8">
+    <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
@@ -227,22 +239,22 @@ function HistorialPage() {
             asChild
             className="mt-5 .bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black"
           >
-            <Link to="/nueva">Crear remito</Link>
+             <Link to="/nueva">Crear remito</Link>
           </Button>
         </div>
       ) : (
         <div className="glass border-gradient overflow-hidden rounded-2xl">
           {/* Desktop table */}
-          <table className="hidden w-full text-sm md:table">
+          <table className="hidden w-full text-center text-sm md:table">
             <thead className="bg-background/40">
               <tr className="text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 text-left">Número</th>
-                <th className="px-4 py-3 text-left">Cliente</th>
-                <th className="px-4 py-3 text-left">Fecha</th>
-                <th className="px-4 py-3 text-left">Pago</th>
-                <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3 text-left">Estado</th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3">Número</th>
+                <th className="px-4 py-3">Cliente</th>
+                <th className="px-4 py-3">Fecha</th>
+                <th className="px-4 py-3">Pago</th>
+                <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Acciones</th>
               </tr>
             </thead>
 
@@ -257,7 +269,7 @@ function HistorialPage() {
                     className="border-t border-border/40 hover:bg-card/40"
                   >
                     <td className="px-4 py-3 font-mono text-color:var(--neon-cyan)">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         <span>{i.number}</span>
                         {isSampleInvoice(i) && (
                           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
@@ -273,14 +285,14 @@ function HistorialPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {PAYMENT_LABEL[i.paymentMethod]}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
+                    <td className="px-4 py-3 tabular-nums font-semibold">
                       {formatMoney(i.total, i.currency)}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={i.status} />
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex justify-end gap-1">
+                      <div className="flex justify-center gap-1">
                         <IconBtn
                           title="Descargar PDF"
                           onClick={() => handleDownloadPDF(i)}
@@ -315,8 +327,8 @@ function HistorialPage() {
           {/* Mobile cards */}
           <div className="divide-y divide-border/40 md:hidden">
             {filtered.map((i) => (
-              <div key={i.id} className="p-4">
-                <div className="flex items-start justify-between gap-3">
+              <div key={i.id} className="p-4 text-center">
+                <div className="flex flex-col items-center gap-3">
                   <div>
                     <p className="font-mono text-sm text-color:var(--neon-cyan)">
                       {i.number}
@@ -328,7 +340,7 @@ function HistorialPage() {
                     </p>
                   </div>
 
-                  <div className="text-right">
+                  <div>
                     <p className="font-bold tabular-nums">
                       {formatMoney(i.total, i.currency)}
                     </p>
@@ -336,7 +348,7 @@ function HistorialPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex justify-center gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -358,7 +370,7 @@ function HistorialPage() {
                     size="sm"
                     variant="ghost"
                     onClick={() => handleDelete(i.id)}
-                    className="ml-auto text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -406,7 +418,7 @@ function HistorialPage() {
               </button>
               <button
                 type="button"
-                className="rounded-2xl bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                className="rounded-2xl bg-linear-to-r from-[#00E5FF] to-[#FF00D4] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
                 onClick={handlePasswordSubmit}
               >
                 Confirmar
@@ -415,6 +427,23 @@ function HistorialPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <AlertDialogContent className="border-border/70 bg-background">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Enviar remito a la papelera</AlertDialogTitle>
+            <AlertDialogDescription>
+              El remito y sus cobros relacionados permanecerán en la papelera durante 5 días. Después se eliminarán definitivamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Mover a papelera
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
