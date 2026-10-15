@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, FileText, Receipt, TrendingUp, Wallet } from "lucide-react";
+import { ArrowUpRight, Clock3, Files, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PAGE_CONTAINER_CLASS, cn } from "@/lib/utils";
 import {
@@ -149,25 +149,25 @@ function Dashboard() {
           accent="cyan"
         />
         <StatCard
-          icon={<TrendingUp className="h-4 w-4" />}
+          icon={<Wallet className="h-4 w-4" />}
           label="Total remitido (USD)"
           value={formatMoney(stats.totalUSD, "USD")}
           accent="fuchsia"
         />
         <StatCard
-          icon={<Receipt className="h-4 w-4" />}
+          icon={<Clock3 className="h-4 w-4" />}
           label="Cobro pendiente (ARS)"
           value={formatMoney(stats.pendingARS, "ARS")}
           accent="cyan"
         />
         <StatCard
-          icon={<FileText className="h-4 w-4" />}
+          icon={<Clock3 className="h-4 w-4" />}
           label="Cobro pendiente (USD)"
           value={formatMoney(stats.pendingUSD, "USD")}
           accent="fuchsia"
         />
         <StatCard
-          icon={<Receipt className="h-4 w-4" />}
+          icon={<Files className="h-4 w-4" />}
           label="Remitos totales"
           value={`${stats.invoiceCount}`}
           accent="cyan"
