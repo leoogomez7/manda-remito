@@ -213,7 +213,7 @@ export function AppSidebar() {
                   </button>
                 </p>
                 <p className="text-center text-xs text-muted-foreground">
-                  Kinde verifica el correo y administra de forma segura el registro. Por una limitación de su SDK React, te volverá a solicitar el nombre y apellido en ese paso; estos campos de este modal no se transfieren al perfil.
+                  Kinde verifica el correo y administra de forma segura el registro. Esta SDK no transfiere estos nombres al perfil; si activaste la captura de nombre y apellido en Kinde, te los pedirá en su paso seguro.
                 </p>
               </>
             ) : (
