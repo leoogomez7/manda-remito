@@ -67,6 +67,7 @@ function KindeSession({ children }: { children: React.ReactNode }) {
     try {
       const options = {
         ...(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {}),
+        ...(AUTH_CONFIG.emailConnectionId ? { connectionId: AUTH_CONFIG.emailConnectionId } : {}),
         ...(email?.trim() ? { loginHint: email.trim() } : {}),
       };
       await action(options);

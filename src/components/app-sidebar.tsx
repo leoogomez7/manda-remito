@@ -17,6 +17,7 @@ import {
 import logo from "@/assets/logo.png";
 import { BUSINESS } from "@/lib/business";
 import { useAppAuth } from "@/lib/auth";
+import { AUTH_CONFIG } from "@/lib/env";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -159,6 +160,11 @@ export function AppSidebar() {
             <p className="text-center text-xs text-muted-foreground">
               La contraseña se ingresa únicamente en Kinde. Al completar el registro, Kinde crea la cuenta automáticamente.
             </p>
+            {!AUTH_CONFIG.emailConnectionId && (
+              <p className="text-center text-xs text-amber-300">
+                Para usar estas pantallas propias, falta configurar AUTH_CONNECTION_ID en Vercel.
+              </p>
+            )}
           </>
         ) : (
           <p className="rounded-xl border border-border/60 bg-background/50 p-3 text-sm text-muted-foreground">
