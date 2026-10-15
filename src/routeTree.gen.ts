@@ -9,19 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NuevaRouteImport } from './routes/nueva'
-import { Route as HistorialRouteImport } from './routes/historial'
-import { Route as BorradoresRouteImport } from './routes/borradores'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BorradoresRouteImport } from './routes/borradores'
+import { Route as HistorialRouteImport } from './routes/historial'
+import { Route as NuevaRouteImport } from './routes/nueva'
 
-const NuevaRoute = NuevaRouteImport.update({
-  id: '/nueva',
-  path: '/nueva',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HistorialRoute = HistorialRouteImport.update({
-  id: '/historial',
-  path: '/historial',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BorradoresRoute = BorradoresRouteImport.update({
@@ -29,9 +24,14 @@ const BorradoresRoute = BorradoresRouteImport.update({
   path: '/borradores',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const HistorialRoute = HistorialRouteImport.update({
+  id: '/historial',
+  path: '/historial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NuevaRoute = NuevaRouteImport.update({
+  id: '/nueva',
+  path: '/nueva',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -71,18 +71,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/nueva': {
-      id: '/nueva'
-      path: '/nueva'
-      fullPath: '/nueva'
-      preLoaderRoute: typeof NuevaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/historial': {
-      id: '/historial'
-      path: '/historial'
-      fullPath: '/historial'
-      preLoaderRoute: typeof HistorialRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/borradores': {
@@ -92,11 +85,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BorradoresRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/historial': {
+      id: '/historial'
+      path: '/historial'
+      fullPath: '/historial'
+      preLoaderRoute: typeof HistorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nueva': {
+      id: '/nueva'
+      path: '/nueva'
+      fullPath: '/nueva'
+      preLoaderRoute: typeof NuevaRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
