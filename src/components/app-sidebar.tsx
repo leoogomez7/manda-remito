@@ -40,8 +40,17 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const { configured, isAuthenticated, login, register, logout, user } = useAppAuth();
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authDialog, setAuthDialog] = useState<"login" | "register" | null>(null);
   const [authEmail, setAuthEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+
+  const openAuthDialog = (mode: "login" | "register") => {
+    setAuthDialog(mode);
+    setAuthEmail("");
+    setFirstName("");
+    setLastName("");
+  };
   const closeSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -78,9 +87,17 @@ export function AppSidebar() {
             <SidebarMenu>
               {!isAuthenticated && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="gap-3" onClick={() => setAuthDialogOpen(true)} tooltip="Ingresar">
+                  <SidebarMenuButton className="gap-3" onClick={() => openAuthDialog("login")} tooltip="Ingresar">
                     <UserRound className="h-4 w-4" />
                     <span>Ingresar</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {!isAuthenticated && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="gap-3" onClick={() => openAuthDialog("register")} tooltip="Crear cuenta">
+                    <UserPlus className="h-4 w-4" />
+                    <span>Crear cuenta</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
@@ -128,16 +145,50 @@ export function AppSidebar() {
         </div>
       </SidebarFooter>
     </Sidebar>
-    <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+    <Dialog open={authDialog !== null} onOpenChange={(open) => { if (!open) setAuthDialog(null); }}>
       <DialogContent className="bg-background shadow-2xl sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-gradient">Acceso a Manda Remito</DialogTitle>
+          <DialogTitle className="text-gradient">
+            {authDialog === "register" ? "Crear cuenta" : "Ingresar a Manda Remito"}
+          </DialogTitle>
           <DialogDescription>
-            Ingresá tu correo. Kinde continuará el acceso o registro en una página segura.
+            {authDialog === "register"
+              ? "Completá tus datos para comenzar el registro."
+              : "Ingresá tu correo para continuar con el acceso."}
           </DialogDescription>
         </DialogHeader>
         {configured ? (
-          <>
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (authDialog === "register") {
+                void register(authEmail);
+              } else {
+                void login(authEmail);
+              }
+            }}
+          >
+            {authDialog === "register" && (
+              <>
+                <Input
+                  autoComplete="given-name"
+                  placeholder="Primer nombre"
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  required
+                  maxLength={80}
+                />
+                <Input
+                  autoComplete="family-name"
+                  placeholder="Apellido"
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  required
+                  maxLength={80}
+                />
+              </>
+            )}
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -147,25 +198,43 @@ export function AppSidebar() {
                 value={authEmail}
                 onChange={(event) => setAuthEmail(event.target.value)}
                 className="pl-9"
+                required
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Button type="button" variant="secondary" onClick={() => { void login(authEmail); }}>
-                <UserRound className="mr-2 h-4 w-4" /> Ya tengo cuenta
-              </Button>
-              <Button type="button" onClick={() => { void register(authEmail); }}>
-                <UserPlus className="mr-2 h-4 w-4" /> Crear cuenta
-              </Button>
-            </div>
-            <p className="text-center text-xs text-muted-foreground">
-              La contraseña se ingresa únicamente en Kinde. Al completar el registro, Kinde crea la cuenta automáticamente.
-            </p>
+            {authDialog === "register" ? (
+              <>
+                <Button type="submit" className="w-full">
+                  <UserPlus className="mr-2 h-4 w-4" /> Continuar con el registro
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  ¿Ya tenés cuenta?{" "}
+                  <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => openAuthDialog("login")}>
+                    Ingresar
+                  </button>
+                </p>
+                <p className="text-center text-xs text-muted-foreground">
+                  Kinde verifica el correo y administra de forma segura el registro. Por una limitación de su SDK React, te volverá a solicitar el nombre y apellido en ese paso; estos campos de este modal no se transfieren al perfil.
+                </p>
+              </>
+            ) : (
+              <>
+                <Button type="submit" className="w-full">
+                  <UserRound className="mr-2 h-4 w-4" /> Continuar con el ingreso
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  ¿No tenés cuenta?{" "}
+                  <button type="button" className="font-medium text-primary underline-offset-4 hover:underline" onClick={() => openAuthDialog("register")}>
+                    Crear cuenta
+                  </button>
+                </p>
+              </>
+            )}
             {!AUTH_CONFIG.emailConnectionId && (
               <p className="text-center text-xs text-amber-300">
-                Para usar estas pantallas propias, falta configurar AUTH_CONNECTION_ID en Vercel.
+                Falta configurar AUTH_CONNECTION_ID en Vercel para usar el flujo de email personalizado.
               </p>
             )}
-          </>
+          </form>
         ) : (
           <p className="rounded-xl border border-border/60 bg-background/50 p-3 text-sm text-muted-foreground">
             Kinde todavía no está configurado en este deployment. Revisá DOMAIN_USER y AUTH_USER en Vercel y volvé a desplegar.
