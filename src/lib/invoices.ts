@@ -36,6 +36,7 @@ export interface Invoice {
   balance: number;
   status: "emitida" | "pendiente" | "borrador";
   settlesInvoiceId?: string;
+  logoDataUrl?: string;
 }
 
 const KEY_INVOICES = "mf:invoices";

@@ -51,7 +51,7 @@ export function AppSidebar() {
               MANDA REMITO
             </span>
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
-              LRG Web Design
+              LRG Web Developer
             </span>
           </div>
         </div>
@@ -64,7 +64,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {!isAuthenticated && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => { void login(); }} tooltip="Ingresar">
+                  <SidebarMenuButton className="gap-3" onClick={() => { void login(); }} tooltip="Ingresar">
                     <UserRound className="h-4 w-4" />
                     <span>Ingresar</span>
                   </SidebarMenuButton>
@@ -74,7 +74,7 @@ export function AppSidebar() {
                 const active = pathname === item.url;
                 return (
                   <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
                       <Link to={item.url} className="flex items-center gap-3" onClick={closeSidebar}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.title}</span>

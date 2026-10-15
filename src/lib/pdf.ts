@@ -5,7 +5,6 @@ import {
   formatMoney,
   type Invoice,
 } from "./invoices";
-import logoUrl from "@/assets/logo.png?url";
 
 const CYAN = "#00E5FF";
 const FUCHSIA = "#FF00D4";
@@ -36,6 +35,12 @@ async function loadLogo(url: string): Promise<{ dataUrl: string; width: number; 
 }
 
 function formatDateOrRaw(value: string) {
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString("es-AR");
+  }
+
   const date = new Date(value);
   return value && !isNaN(date.getTime()) ? date.toLocaleDateString("es-AR") : value || "—";
 }
@@ -62,59 +67,48 @@ export async function generateInvoicePdf(invoice: Invoice) {
 
   // Logo in header, centered at top
   const logoTop = 18;
-  let logoHeight = 0;
-  let logoWidth = 0;
+  let logoHeight = 70;
 
-  try {
-    const logo = await loadLogo(logoUrl);
-    const maxLogoWidth = 180;
-    const maxLogoHeight = 70;
-    const scale = Math.min(maxLogoWidth / logo.width, maxLogoHeight / logo.height, 1);
-    logoWidth = logo.width * scale;
-    logoHeight = logo.height * scale;
-    doc.addImage(logo.dataUrl, "PNG", pageW / 2 - logoWidth / 2, logoTop, logoWidth, logoHeight);
-  } catch (error) {
-    console.warn("No se pudo cargar el logo en el PDF", error);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.setTextColor(LIGHT);
-    const text = BUSINESS.brand.toUpperCase();
-    const textWidth = doc.getTextWidth(text);
-    logoWidth = textWidth;
-    logoHeight = 24;
-    doc.text(text, pageW / 2 - textWidth / 2, logoTop + 16);
+  if (invoice.logoDataUrl) {
+    try {
+      const logo = await loadLogo(invoice.logoDataUrl);
+      const maxLogoWidth = 180;
+      const maxLogoHeight = 70;
+      const scale = Math.min(maxLogoWidth / logo.width, maxLogoHeight / logo.height, 1);
+      const logoWidth = logo.width * scale;
+      logoHeight = logo.height * scale;
+      doc.addImage(logo.dataUrl, "PNG", pageW / 2 - logoWidth / 2, logoTop, logoWidth, logoHeight);
+    } catch (error) {
+      console.warn("No se pudo cargar el logo elegido en el PDF", error);
+    }
   }
 
   const textTop = logoTop + logoHeight + 10;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(LIGHT);
-  doc.text(BUSINESS.name, 40, textTop);
+  doc.text(BUSINESS.name, pageW - 40, textTop, { align: "right" });
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(MUTED);
-  doc.text(`${BUSINESS.role} • ${BUSINESS.location}`, 40, textTop + 14);
-  doc.text(`${BUSINESS.email} • ${BUSINESS.phone}`, 40, textTop + 28);
+  doc.text(`${BUSINESS.role} • ${BUSINESS.location}`, pageW - 40, textTop + 14, { align: "right" });
+  doc.text(`${BUSINESS.email} • ${BUSINESS.phone}`, pageW - 40, textTop + 28, { align: "right" });
 
-  // Document title and invoice details on the right
+  // Document title and invoice details on the left
   doc.setTextColor(CYAN);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("REMITO", pageW - 40, textTop, { align: "right" });
+  doc.text("REMITO", 40, textTop);
 
   doc.setTextColor(LIGHT);
   doc.setFontSize(12);
-  doc.text(invoice.number, pageW - 40, textTop + 18, { align: "right" });
+  doc.text(invoice.number, 40, textTop + 18);
 
   doc.setTextColor(MUTED);
   doc.setFontSize(9);
-  doc.text(`Emitido: ${formatDateOrRaw(invoice.createdAt)}`, pageW - 40, textTop + 32, {
-    align: "right",
-  });
-  doc.text(`Entrega: ${formatDateOrRaw(invoice.deliveryDate)}`, pageW - 40, textTop + 46, {
-    align: "right",
-  });
+  doc.text(`Emitido: ${formatDateOrRaw(invoice.issueDate || invoice.createdAt)}`, 40, textTop + 32);
+  doc.text(`Entrega: ${formatDateOrRaw(invoice.deliveryDate)}`, 40, textTop + 46);
 
   const clientTop = headerHeight + 18;
 
@@ -183,8 +177,8 @@ export async function generateInvoicePdf(invoice: Invoice) {
     alternateRowStyles: { fillColor: "#F7F8FB" },
     columnStyles: {
       0: { halign: "center", cellWidth: 50 },
-      2: { halign: "right", cellWidth: 100 },
-      3: { halign: "right", cellWidth: 100 },
+      2: { halign: "left", cellWidth: 100 },
+      3: { halign: "left", cellWidth: 100 },
     },
     margin: { left: 40, right: 40 },
   });

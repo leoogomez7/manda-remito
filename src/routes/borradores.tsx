@@ -88,6 +88,7 @@ function BorradoresPage() {
       items: draft.items,
       deposit: draft.deposit,
       notes: draft.notes,
+      logoDataUrl: draft.logoDataUrl,
     });
     navigate({ to: "/nueva" });
   };

@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Banknote,
@@ -10,8 +9,11 @@ import {
   Save,
   Send,
   Trash2,
+  Upload,
+  X,
   Wallet,
 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,6 +62,7 @@ type FormState = {
   issueDate: string;
   deliveryDate: string;
   notes: string;
+  logoDataUrl?: string;
   deposit: number;
   client: Invoice["client"];
   items: LineItem[];
@@ -82,6 +85,7 @@ const initial: FormState = {
   issueDate: new Date().toISOString().slice(0, 10),
   deliveryDate: "",
   notes: "",
+  logoDataUrl: undefined,
   deposit: 0,
   client: { name: "", phone: "", cuit: "", address: "", zip: "", email: "" },
   items: [emptyItem()],
@@ -89,6 +93,7 @@ const initial: FormState = {
 
 export function NuevaFactura() {
   const navigate = useNavigate();
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<FormState>(() => {
     const draft = loadDraft<FormState>();
     return draft || {
@@ -213,6 +218,7 @@ export function NuevaFactura() {
       items: form.items,
       deposit: payment,
       notes: selectedPendingInvoice && !form.notes ? `Pago de ${selectedPendingInvoice.number}` : form.notes,
+      logoDataUrl: form.logoDataUrl,
       subtotal: totals.subtotal,
       total: totals.total,
       balance: totals.balance,
@@ -297,6 +303,7 @@ export function NuevaFactura() {
       items: form.items,
       deposit: Number(form.deposit) || 0,
       notes: form.notes,
+      logoDataUrl: form.logoDataUrl,
       subtotal: totals.subtotal,
       total: totals.total,
       balance: totals.balance,
@@ -316,6 +323,35 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
 
   const updateClient = (patch: Partial<FormState["client"]>) => {
     setForm((s) => ({ ...s, client: { ...s.client, ...patch } }));
+  };
+
+  const handleLogoUpload = async (file?: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Seleccioná un archivo de imagen.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("La imagen debe pesar menos de 10 MB.");
+      return;
+    }
+
+    try {
+      const bitmap = await createImageBitmap(file);
+      const maxDimension = 600;
+      const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("No se pudo procesar la imagen.");
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      update("logoDataUrl", canvas.toDataURL("image/png"));
+    } catch (error) {
+      console.error("No se pudo procesar el logo", error);
+      toast.error("No se pudo abrir esa imagen. Probá con otro formato.");
+    }
   };
 
   const updateItem = (id: string, patch: Partial<LineItem>) => {
@@ -412,13 +448,13 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           </div>
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-border/60 bg-background/50 p-5">
-            <table className="w-full text-sm text-center">
+            <table className="w-full text-sm text-left">
               <thead>
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="pb-2 text-center">Cantidad</th>
                   <th className="pb-2 text-center">Descripción</th>
-                  <th className="pb-2 text-center">Precio unitario</th>
-                  <th className="pb-2 text-center">Total</th>
+                  <th className="pb-2 text-left">Precio unitario</th>
+                  <th className="pb-2 text-left">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -511,6 +547,41 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 />
               </Field>
             </div>
+          </Section>
+
+          <Section title="Seleccionar logo" subtitle="Opcional · aparecerá en el encabezado del PDF">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              {form.logoDataUrl ? (
+                <div className="flex h-20 w-32 items-center justify-center rounded-xl border border-border/60 bg-background/60 p-2">
+                  <img src={form.logoDataUrl} alt="Vista previa del logo" className="max-h-full max-w-full object-contain" />
+                </div>
+              ) : (
+                <div className="flex h-20 w-32 items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/40 text-xs text-muted-foreground">
+                  Sin logo
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    void handleLogoUpload(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <Button type="button" variant="secondary" onClick={() => logoInputRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" /> Importar desde la PC
+                </Button>
+                {form.logoDataUrl && (
+                  <Button type="button" variant="ghost" onClick={() => update("logoDataUrl", undefined)}>
+                    <X className="mr-2 h-4 w-4" /> Quitar logo
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Formatos de imagen que admita el navegador. Si no elegís uno, el remito se genera sin logo.</p>
           </Section>
 
           {/* SECCIÓN: MÉTODO DE PAGO */}
@@ -638,8 +709,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   <tr className="text-xs uppercase tracking-wider text-muted-foreground">
                     <th className="w-20 pb-2 text-left">Cant.</th>
                     <th className="pb-2 text-left">Descripción</th>
-                    <th className="w-32 pb-2 text-right">P. Unit.</th>
-                    <th className="w-32 pb-2 text-right">Total</th>
+                    <th className="w-32 pb-2 text-left">P. Unit.</th>
+                    <th className="w-32 pb-2 text-left">Total</th>
                     <th className="w-10 pb-2"></th>
                   </tr>
                 </thead>
@@ -668,12 +739,12 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                             type="number"
                             min={0}
                             step="0.01"
-                            className="text-right"
+                            className="text-left"
                             value={it.unitPrice || ""}
                             onChange={(e) => updateItem(it.id, { unitPrice: Number(e.target.value) })}
                           />
                         </td>
-                        <td className="py-2 pr-2 text-right tabular-nums font-medium">
+                        <td className="py-2 pr-2 text-left tabular-nums font-medium">
                           {formatMoney(line, form.currency)}
                         </td>
                         <td className="py-2 text-right">
