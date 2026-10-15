@@ -38,7 +38,7 @@ import {
   type PaymentMethod,
 } from "@/lib/invoices";
 import { BUSINESS } from "@/lib/business";
-import { cn } from "@/lib/utils";
+import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
 export const Route = createFileRoute("/nueva")({
   component: NuevaFactura,
@@ -339,7 +339,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
   // VISTA CONDICIONAL: Factura recién generada con éxito
   if (generatedInvoice) {
     return (
-      <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
+      <div className={PAGE_CONTAINER_CLASS}>
         <div className="glass rounded-2xl p-8">
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -443,7 +443,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
   }
 
     return (
-    <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
+    <div className={PAGE_CONTAINER_CLASS}>
       {/* Título Principal */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}

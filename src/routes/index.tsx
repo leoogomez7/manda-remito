@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowUpRight, FileText, Receipt, TrendingUp, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PAGE_CONTAINER_CLASS, cn } from "@/lib/utils";
 import {
   formatMoney,
   getInvoices,
@@ -113,7 +114,7 @@ function Dashboard() {
   const PIE_COLORS = ["#00E5FF", "#FF00D4", "#7C3AED", "#22D3EE"];
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 pb-8 pt-5 sm:pb-10 sm:pt-7">
+    <div className={cn(PAGE_CONTAINER_CLASS, "pb-8 sm:pb-10")}>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

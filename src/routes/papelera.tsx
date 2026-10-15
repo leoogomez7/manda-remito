@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Archive, CalendarClock, FileText, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,7 +56,7 @@ function PapeleraPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
+    <div className={PAGE_CONTAINER_CLASS}>
       <div className="mb-6 flex items-end gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Eliminados recientemente</p>

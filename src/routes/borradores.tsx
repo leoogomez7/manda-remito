@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Archive, FileText, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -114,7 +115,7 @@ function BorradoresPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl px-4 py-5 sm:py-7">
+    <div className={PAGE_CONTAINER_CLASS}>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
