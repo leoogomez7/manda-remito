@@ -39,7 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }}>{children}</AuthContext.Provider>;
   }
 
-  const appOrigin = typeof window === "undefined" ? "" : `${window.location.origin}/`;
+  // Kinde React normalizes the root redirect URI by removing its trailing slash.
+  const appOrigin = typeof window === "undefined" ? "" : window.location.origin;
   const configuredDomain = AUTH_CONFIG.domain.replace(/\/+$/, "");
   const domain = /^https?:\/\//i.test(configuredDomain)
     ? configuredDomain
