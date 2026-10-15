@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 export default defineConfig({
+  envPrefix: ["VITE_", "DOMAIN_USER", "AUTH_USER", "CODE_ORG"],
   plugins: [
     react(),
     tsconfigPaths(),

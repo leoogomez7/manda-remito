@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Archive, LayoutDashboard, FileCheck, FilePlus2, Trash2 } from "lucide-react";
+import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Trash2, UserRound } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import logo from "@/assets/logo.png";
 import { BUSINESS } from "@/lib/business";
+import { useAppAuth } from "@/lib/auth";
 
 const items = [
   { title: "Menú principal", url: "/", icon: LayoutDashboard },
@@ -27,6 +28,7 @@ const items = [
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
+  const { configured, isAuthenticated, login, logout, user } = useAppAuth();
   const closeSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -60,6 +62,14 @@ export function AppSidebar() {
           <SidebarGroupLabel>Panel Administrativo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {!isAuthenticated && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => { void login(); }} tooltip="Ingresar">
+                    <UserRound className="h-4 w-4" />
+                    <span>Ingresar</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
               {items.map((item) => {
                 const active = pathname === item.url;
                 return (
@@ -73,7 +83,25 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                 );
               })}
+              {isAuthenticated && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton onClick={() => { void logout(); }} tooltip="Cerrar sesión">
+                    <LogOut className="h-4 w-4" />
+                    <span>Cerrar sesión</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
+            {isAuthenticated && user?.email && (
+              <p className="mt-2 truncate px-2 text-[11px] text-muted-foreground group-data-[collapsible=icon]:hidden">
+                {user.email}
+              </p>
+            )}
+            {!configured && (
+              <p className="mt-1 px-2 text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
+                Configurá Kinde para habilitar el acceso.
+              </p>
+            )}
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

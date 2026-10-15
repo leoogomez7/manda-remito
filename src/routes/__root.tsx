@@ -13,6 +13,7 @@ import logo from "@/assets/logo.png";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAppAuth } from "@/lib/auth";
 
 function NotFoundComponent() {
   return (
@@ -129,23 +130,63 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SidebarProvider>
-        <div className="flex min-h-screen w-full">
-          <AppSidebar />
-          <div className="flex flex-1 flex-col">
-            <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-background/60 px-4 backdrop-blur">
-              <SidebarTrigger />
-              <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Manda Remito
-              </div>
+      <AuthProvider>
+        <SidebarProvider>
+          <div className="flex min-h-screen w-full">
+            <AppSidebar />
+            <div className="flex flex-1 flex-col">
+              <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-background/60 px-4 backdrop-blur">
+                <SidebarTrigger />
+                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Manda Remito
+                </div>
               </header>
-            <main className="flex-1">
-              <Outlet />
-            </main>
+              <main className="flex-1">
+                <AuthenticatedContent />
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster theme="dark" position="top-right" richColors />
-      </SidebarProvider>
+          <Toaster theme="dark" position="top-right" richColors />
+        </SidebarProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
+}
+
+function AuthenticatedContent() {
+  const { configured, isAuthenticated, isLoading, login } = useAppAuth();
+
+  if (!configured) {
+    return <Outlet />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
+        Verificando sesión...
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center px-4">
+        <section className="glass border-gradient w-full max-w-md rounded-2xl p-8 text-center">
+          <h1 className="text-2xl font-bold text-gradient">Ingresá a Manda Remito</h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Iniciá sesión con tu cuenta para acceder al panel administrativo.
+          </p>
+          <button
+            type="button"
+            onClick={() => { void login(); }}
+            className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            Ingresar con Kinde
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  return <Outlet />;
 }
