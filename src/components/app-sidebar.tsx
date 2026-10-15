@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Trash2, UserRound } from "lucide-react";
+import { useState } from "react";
+import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +17,15 @@ import {
 import logo from "@/assets/logo.png";
 import { BUSINESS } from "@/lib/business";
 import { useAppAuth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const items = [
   { title: "Menú principal", url: "/", icon: LayoutDashboard },
@@ -28,7 +38,9 @@ const items = [
 export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
-  const { configured, isAuthenticated, login, logout, user } = useAppAuth();
+  const { configured, isAuthenticated, login, register, logout, user } = useAppAuth();
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
   const closeSidebar = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -38,6 +50,7 @@ export function AppSidebar() {
   };
 
   return (
+    <>
     <Sidebar collapsible="icon">
       <SidebarHeader className="h-14 min-h-14 shrink-0 justify-center p-0">
         <div className="flex h-full w-full items-center gap-3 px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:px-0">
@@ -64,7 +77,7 @@ export function AppSidebar() {
             <SidebarMenu>
               {!isAuthenticated && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton className="gap-3" onClick={() => { void login(); }} tooltip="Ingresar">
+                  <SidebarMenuButton className="gap-3" onClick={() => setAuthDialogOpen(true)} tooltip="Ingresar">
                     <UserRound className="h-4 w-4" />
                     <span>Ingresar</span>
                   </SidebarMenuButton>
@@ -114,5 +127,46 @@ export function AppSidebar() {
         </div>
       </SidebarFooter>
     </Sidebar>
+    <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+      <DialogContent className="glass border-gradient sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-gradient">Acceso a Manda Remito</DialogTitle>
+          <DialogDescription>
+            Ingresá tu correo. Kinde continuará el acceso o registro en una página segura.
+          </DialogDescription>
+        </DialogHeader>
+        {configured ? (
+          <>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="email"
+                autoComplete="email"
+                placeholder="tu@correo.com"
+                value={authEmail}
+                onChange={(event) => setAuthEmail(event.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button type="button" variant="secondary" onClick={() => { void login(authEmail); }}>
+                <UserRound className="mr-2 h-4 w-4" /> Ya tengo cuenta
+              </Button>
+              <Button type="button" onClick={() => { void register(authEmail); }}>
+                <UserPlus className="mr-2 h-4 w-4" /> Crear cuenta
+              </Button>
+            </div>
+            <p className="text-center text-xs text-muted-foreground">
+              La contraseña se ingresa únicamente en Kinde. Al completar el registro, Kinde crea la cuenta automáticamente.
+            </p>
+          </>
+        ) : (
+          <p className="rounded-xl border border-border/60 bg-background/50 p-3 text-sm text-muted-foreground">
+            Kinde todavía no está configurado en este deployment. Revisá DOMAIN_USER y AUTH_USER en Vercel y volvé a desplegar.
+          </p>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

@@ -7,7 +7,8 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: { givenName?: string; familyName?: string; email?: string } | null;
-  login: () => void | Promise<void>;
+  login: (email?: string) => void | Promise<void>;
+  register: (email?: string) => void | Promise<void>;
   logout: () => void | Promise<void>;
 };
 
@@ -17,6 +18,9 @@ const AuthContext = createContext<AuthContextValue>({
   isLoading: false,
   user: null,
   login: () => {
+    window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER.");
+  },
+  register: () => {
     window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER.");
   },
   logout: () => undefined,
@@ -30,11 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading: false,
       user: null,
       login: () => window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER."),
+      register: () => window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER."),
       logout: () => undefined,
     }}>{children}</AuthContext.Provider>;
   }
 
-  const appOrigin = typeof window === "undefined" ? "" : window.location.origin;
+  const appOrigin = typeof window === "undefined" ? "" : `${window.location.origin}/`;
   const configuredDomain = AUTH_CONFIG.domain.replace(/\/+$/, "");
   const domain = /^https?:\/\//i.test(configuredDomain)
     ? configuredDomain
@@ -53,7 +58,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 function KindeSession({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, login, logout } = useKindeAuth();
+  const { isAuthenticated, isLoading, user, login, register, logout } = useKindeAuth();
+
+  const startAuth = async (
+    action: typeof login | typeof register,
+    email?: string,
+  ) => {
+    try {
+      const options = {
+        ...(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {}),
+        ...(email?.trim() ? { loginHint: email.trim() } : {}),
+      };
+      await action(options);
+    } catch (error) {
+      console.error("No se pudo iniciar el flujo de autenticación de Kinde", error);
+      const detail = error instanceof Error ? `\n\nDetalle: ${error.message}` : "";
+      window.alert(
+        `Kinde no pudo iniciar la autenticación. Verificá DOMAIN_USER, AUTH_USER, el registro habilitado y las URLs autorizadas.${detail}`,
+      );
+    }
+  };
 
   return (
     <AuthContext.Provider
@@ -62,17 +86,8 @@ function KindeSession({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         user: user ?? null,
-        login: async () => {
-          try {
-            await login(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {});
-          } catch (error) {
-            console.error("No se pudo iniciar sesión con Kinde", error);
-            const detail = error instanceof Error ? `\n\nDetalle: ${error.message}` : "";
-            window.alert(
-              `Kinde no pudo iniciar sesión. Verificá DOMAIN_USER, AUTH_USER y las URLs autorizadas de callback en Kinde.${detail}`,
-            );
-          }
-        },
+        login: (email) => startAuth(login, email),
+        register: (email) => startAuth(register, email),
         logout: () => logout(),
       }}
     >
