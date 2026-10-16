@@ -92,7 +92,16 @@ function KindeSession({ children }: { children: React.ReactNode }) {
         isLoading,
         user: user ?? null,
         login: (email) => startAuth(login, email),
-        register: () => startAuth(register, undefined, false),
+        register: () => {
+          if (!AUTH_CONFIG.orgCode) {
+            window.alert(
+              "No se puede crear la cuenta en una organización específica: CODE_ORG no está configurado en este deployment. Configuralo en Vercel y volvé a desplegar.",
+            );
+            return;
+          }
+
+          return startAuth(register, undefined, false);
+        },
         logout: () => logout(),
       }}
     >
