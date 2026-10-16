@@ -64,11 +64,14 @@ function KindeSession({ children }: { children: React.ReactNode }) {
   const startAuth = async (
     action: typeof login | typeof register,
     email?: string,
+    useCustomEmailConnection = true,
   ) => {
     try {
       const options = {
         ...(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {}),
-        ...(AUTH_CONFIG.emailConnectionId ? { connectionId: AUTH_CONFIG.emailConnectionId } : {}),
+        ...(useCustomEmailConnection && AUTH_CONFIG.emailConnectionId
+          ? { connectionId: AUTH_CONFIG.emailConnectionId }
+          : {}),
         ...(email?.trim() ? { loginHint: email.trim() } : {}),
       };
       await action(options);
@@ -89,7 +92,7 @@ function KindeSession({ children }: { children: React.ReactNode }) {
         isLoading,
         user: user ?? null,
         login: (email) => startAuth(login, email),
-        register: (email) => startAuth(register, email),
+        register: () => startAuth(register, undefined, false),
         logout: () => logout(),
       }}
     >
