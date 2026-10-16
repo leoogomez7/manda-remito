@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, FileText, Printer, Search, Trash2 } from "lucide-react";
+import { Download, Eye, EyeOff, FileText, Printer, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -384,28 +384,38 @@ function HistorialPage() {
 
       {passwordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
-          <div className="w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
-            <h2 className="text-xl font-semibold">Contraseña requerida</h2>
+          <div className="relative w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
+            <button
+              type="button"
+              aria-label="Cerrar ventana de contraseña"
+              className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              onClick={clearPasswordDialog}
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h2 className="pr-8 text-xl font-semibold">Contraseña requerida</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Ingresa la contraseña para descargar o imprimir este remito.
             </p>
-            <input
-              autoFocus
-              value={passwordInput}
-              onChange={(e) => setPasswordInput(e.target.value)}
-              type={showPassword ? "text" : "password"}
-              className="mt-4 w-full rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm outline-none focus:border-(--neon-cyan)/70"
-              placeholder="Contraseña"
-            />
-            <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+            <div className="relative mt-4">
               <input
-                type="checkbox"
-                checked={showPassword}
-                onChange={(e) => setShowPassword(e.target.checked)}
-                className="h-4 w-4 rounded border border-border/60 bg-background text-cyan-500 focus:ring-cyan-500"
+                autoFocus
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                type={showPassword ? "text" : "password"}
+                className="w-full rounded-2xl border border-border/60 bg-background/80 px-4 py-3 pr-12 text-sm outline-none focus:border-(--neon-cyan)/70"
+                placeholder="Contraseña"
               />
-              Mostrar contraseña
-            </label>
+              <button
+                type="button"
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-pressed={showPassword}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white transition-colors hover:bg-white/10 hover:text-white"
+                onClick={() => setShowPassword((visible) => !visible)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
             {passwordError && (
               <p className="mt-2 text-sm text-destructive">{passwordError}</p>
             )}

@@ -3,8 +3,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Banknote,
   CreditCard,
+  Download,
   Eye,
   EyeOff,
+  FilePlus2,
+  House,
   Landmark,
   Plus,
   Printer,
@@ -418,7 +421,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   }
                 }}
               >
-                Descargar remito
+                <Download className="mr-2 h-4 w-4" /> Descargar remito
               </Button>
               <Button
                 type="button"
@@ -427,7 +430,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   navigate({ to: "/nueva" });
                 }}
               >
-                Generar nuevo remito
+                <FilePlus2 className="mr-2 h-4 w-4" /> Generar nuevo remito
               </Button>
               <Button
                 type="button"
@@ -437,7 +440,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   navigate({ to: "/" });
                 }}
               >
-                Volver al inicio
+                <House className="mr-2 h-4 w-4" /> Volver al inicio
               </Button>
             </div>
           </div>
@@ -493,24 +496,24 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           </div>
 
           <div className="mt-6 overflow-x-auto rounded-2xl border border-border/60 bg-background/50 p-5">
-            <table className="w-full text-sm text-left">
+            <table className="w-full min-w-155 table-fixed text-sm">
               <thead>
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="pb-2 text-center">Cantidad</th>
-                  <th className="pb-2 text-center">Descripción</th>
-                  <th className="pb-2 text-left">Precio unitario</th>
-                  <th className="pb-2 text-left">Total</th>
+                  <th className="w-[12%] pb-2 text-center">Cantidad</th>
+                  <th className="w-[40%] pb-2 text-center">Descripción</th>
+                  <th className="w-[24%] pb-2 text-center">Precio unitario</th>
+                  <th className="w-[24%] pb-2 text-center">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {generatedInvoice.items.map((item) => (
                   <tr key={item.id} className="border-t border-border/40">
-                    <td className="py-3">{item.quantity || "-"}</td>
-                    <td className="py-3 text-center">{item.description || "Sin descripción"}</td>
-                    <td className="py-3 tabular-nums">
+                    <td className="whitespace-nowrap py-3 text-center">{item.quantity || "-"}</td>
+                    <td className="whitespace-nowrap py-3 text-center">{item.description || "Sin descripción"}</td>
+                    <td className="whitespace-nowrap py-3 text-center tabular-nums">
                       {formatMoney(item.unitPrice, generatedInvoice.currency)}
                     </td>
-                    <td className="py-3 tabular-nums">
+                    <td className="whitespace-nowrap py-3 text-center tabular-nums">
                       {formatMoney(item.quantity * item.unitPrice, generatedInvoice.currency)}
                     </td>
                   </tr>
