@@ -204,7 +204,7 @@ export function AppSidebar() {
             {authDialog === "register" ? (
               <>
                 <Button type="submit" className="w-full">
-                  <UserPlus className="mr-2 h-4 w-4" /> Continuar con el registro
+                  <UserPlus className="mr-2 h-4 w-4" /> Continuar
                 </Button>
                 <p className="text-center text-xs text-muted-foreground">
                   ¿Ya tenés cuenta?{" "}
