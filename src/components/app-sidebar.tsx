@@ -219,7 +219,7 @@ export function AppSidebar() {
             ) : (
               <>
                 <Button type="submit" className="w-full">
-                  <UserRound className="mr-2 h-4 w-4" /> Continuar con el ingreso
+                  <UserRound className="mr-2 h-4 w-4" /> Continuar
                 </Button>
                 <p className="text-center text-xs text-muted-foreground">
                   ¿No tenés cuenta?{" "}
