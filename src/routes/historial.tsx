@@ -386,7 +386,7 @@ function HistorialPage() {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
           onClick={(event) => {
-            if (event.target === event.currentTarget) event.preventDefault();
+            if (event.target === event.currentTarget) clearPasswordDialog();
           }}
         >
           <div className="relative w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
