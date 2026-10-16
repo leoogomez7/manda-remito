@@ -674,20 +674,24 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
 
           {/* SECCIÓN: MONEDA */}
           <Section title="Moneda">
-            <div className="inline-flex rounded-xl border border-border/60 bg-card/40 p-1">
+            <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
               {(["ARS", "USD"] as Currency[]).map((c) => (
                 <button
                   key={c}
                   type="button"
                   onClick={() => update("currency", c)}
                   className={cn(
-                    "rounded-lg px-5 py-2 text-sm font-semibold transition-all",
+                    "group relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-sm font-semibold transition-all duration-200 active:scale-[0.98]",
                     form.currency === c
-                      ? ".bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "border-(--neon-cyan)/70 bg-card text-(--neon-cyan) glow-cyan shadow-[0_0_15px_rgba(0,229,255,0.15)]"
+                      : "border-border/60 bg-card/40 text-muted-foreground hover:border-(--neon-fuchsia)/40 hover:text-foreground",
                   )}
                 >
-                  {c} · {CURRENCY_SYMBOL[c]}
+                  <span>{c}</span>
+                  <span className="text-xs">{CURRENCY_SYMBOL[c]}</span>
+                  {form.currency === c && (
+                    <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-(--neon-cyan)/60" />
+                  )}
                 </button>
               ))}
             </div>
