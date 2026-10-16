@@ -3,8 +3,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   Banknote,
   CreditCard,
+  Eye,
+  EyeOff,
   Landmark,
   Plus,
+  Printer,
   Receipt,
   Save,
   Send,
@@ -386,15 +389,57 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 <span className="text-gradient">{generatedInvoice.number}</span>
               </h1>
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setGeneratedInvoice(null);
-                navigate({ to: "/" });
-              }}
-            >
-              Volver al inicio
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const { printInvoicePdf } = await import("@/lib/pdf");
+                    await printInvoicePdf(generatedInvoice);
+                  } catch (error) {
+                    console.error("No se pudo abrir la impresión del remito", error);
+                    toast.error("No se pudo abrir la ventana de impresión.");
+                  }
+                }}
+              >
+                <Printer className="mr-2 h-4 w-4" /> Imprimir PDF
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const { downloadInvoicePdf } = await import("@/lib/pdf");
+                    await downloadInvoicePdf(generatedInvoice);
+                  } catch (error) {
+                    console.error("No se pudo volver a descargar el remito", error);
+                    toast.error("No se pudo descargar el PDF. Intentá nuevamente.");
+                  }
+                }}
+              >
+                Descargar remito
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setGeneratedInvoice(null);
+                  navigate({ to: "/nueva" });
+                }}
+              >
+                Generar nuevo remito
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setGeneratedInvoice(null);
+                  navigate({ to: "/" });
+                }}
+              >
+                Volver al inicio
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
@@ -461,7 +506,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 {generatedInvoice.items.map((item) => (
                   <tr key={item.id} className="border-t border-border/40">
                     <td className="py-3">{item.quantity || "-"}</td>
-                    <td className="py-3">{item.description || "Sin descripción"}</td>
+                    <td className="py-3 text-center">{item.description || "Sin descripción"}</td>
                     <td className="py-3 tabular-nums">
                       {formatMoney(item.unitPrice, generatedInvoice.currency)}
                     </td>
@@ -852,28 +897,38 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
 
           {passwordModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8">
-              <div className="w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
-                <h2 className="text-xl font-semibold">Contraseña requerida</h2>
+              <div className="relative w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
+                <button
+                  type="button"
+                  aria-label="Cerrar ventana de contraseña"
+                  className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={() => setPasswordModalOpen(false)}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <h2 className="pr-8 text-xl font-semibold">Contraseña requerida</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Ingresa la contraseña para generar el remito.
                 </p>
-                <input
-                  autoFocus
-                  value={passwordInput}
-                  onChange={(e) => setPasswordInput(e.target.value)}
-                  type={showPassword ? "text" : "password"}
-                  className="mt-4 w-full rounded-2xl border border-border/60 bg-background/80 px-4 py-3 text-sm outline-none focus:border-(--neon-cyan)/70"
-                  placeholder="Contraseña"
-                />
-                <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                <div className="relative mt-4">
                   <input
-                    type="checkbox"
-                    checked={showPassword}
-                    onChange={(e) => setShowPassword(e.target.checked)}
-                    className="h-4 w-4 rounded border border-border/60 bg-background text-cyan-500 focus:ring-cyan-500"
+                    autoFocus
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    type={showPassword ? "text" : "password"}
+                    className="w-full rounded-2xl border border-border/60 bg-background/80 px-4 py-3 pr-12 text-sm outline-none focus:border-(--neon-cyan)/70"
+                    placeholder="Contraseña"
                   />
-                  Mostrar contraseña
-                </label>
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    aria-pressed={showPassword}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white transition-colors hover:bg-white/10 hover:text-white"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
                 {passwordError && (
                   <p className="mt-2 text-sm text-destructive">{passwordError}</p>
                 )}
@@ -887,7 +942,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   </button>
                   <button
                     type="button"
-                    className="rounded-2xl .bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
+                    className="rounded-2xl bg-linear-to-r from-[#00E5FF] to-[#FF00D4] px-5 py-3 text-sm font-semibold text-black shadow-[0_0_18px_rgba(0,229,255,0.2)] transition hover:opacity-90"
                     onClick={handlePasswordSubmit}
                   >
                     Confirmar

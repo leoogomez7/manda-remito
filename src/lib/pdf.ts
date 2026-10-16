@@ -266,7 +266,130 @@ export async function downloadInvoicePdf(invoice: Invoice) {
 }
 
 export async function printInvoicePdf(invoice: Invoice) {
-  const doc = await generateInvoicePdf(invoice);
-  const url = doc.output("bloburl");
-  window.open(url, "_blank");
+  const escapeHtml = (value: string | number | undefined) =>
+    String(value ?? "").replace(/[&<>"']/g, (character) => {
+      const entities: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      };
+      return entities[character];
+    });
+
+  const itemRows = invoice.items.map((item) => `
+    <tr>
+      <td>${escapeHtml(item.quantity)}</td>
+      <td>${escapeHtml(item.description || "Sin descripción")}</td>
+      <td>${escapeHtml(formatMoney(item.unitPrice, invoice.currency))}</td>
+      <td>${escapeHtml(formatMoney((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), invoice.currency))}</td>
+    </tr>
+  `).join("");
+  const logo = invoice.logoDataUrl
+    ? `<img class="logo" src="${escapeHtml(invoice.logoDataUrl)}" alt="Logo" />`
+    : "";
+  const issueDate = formatDateOrRaw(invoice.issueDate || invoice.createdAt);
+  const deliveryDate = formatDateOrRaw(invoice.deliveryDate);
+  const html = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(invoice.number)} - ${escapeHtml(BUSINESS.brand)}</title>
+  <style>
+    @page { size: A4; margin: 12mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: #111827; font: 12px Arial, sans-serif; }
+    header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding: 18px; color: white; background: #0b0b0f; border-bottom: 4px solid #00dbe8; }
+    .doc h1 { margin: 0 0 6px; color: #00dbe8; font-size: 25px; }
+    .doc p, .business p { margin: 3px 0; }
+    .business { text-align: right; }
+    .business strong { font-size: 14px; }
+    .business p, .doc .date { color: #c3cad5; }
+    .logo { display: block; max-width: 110px; max-height: 75px; object-fit: contain; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin: 22px 0; }
+    .details h2 { margin: 0 0 9px; font-size: 12px; letter-spacing: .08em; }
+    .details p { margin: 4px 0; }
+    .payment { text-align: right; }
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th { padding: 9px; background: #111827; color: #00dbe8; text-align: left; }
+    td { padding: 9px; border: 1px solid #d7dce3; }
+    .totals { width: 280px; margin: 18px 0 0 auto; padding: 14px; border: 1px solid #00b8c7; border-radius: 8px; }
+    .total-row { display: flex; justify-content: space-between; margin: 7px 0; }
+    .grand-total { padding-top: 8px; border-top: 1px solid #cc00aa; color: #007d91; font-size: 15px; font-weight: bold; }
+    .balance { color: #b00083; font-weight: bold; }
+    .notes { margin-top: 24px; white-space: pre-wrap; }
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="doc">
+      <h1>REMITO</h1>
+      <p><strong>${escapeHtml(invoice.number)}</strong></p>
+      <p class="date">Emitido: ${escapeHtml(issueDate)}</p>
+      <p class="date">Entrega: ${escapeHtml(deliveryDate)}</p>
+    </div>
+    <div>${logo}</div>
+    <div class="business">
+      <strong>${escapeHtml(BUSINESS.name)}</strong>
+      <p>${escapeHtml(BUSINESS.role)} · ${escapeHtml(BUSINESS.location)}</p>
+      <p>${escapeHtml(BUSINESS.email)} · ${escapeHtml(BUSINESS.phone)}</p>
+    </div>
+  </header>
+  <section class="details">
+    <div>
+      <h2>CLIENTE</h2>
+      <p>${escapeHtml(invoice.client.name || "—")}</p>
+      ${invoice.client.cuit ? `<p>CUIT: ${escapeHtml(invoice.client.cuit)}</p>` : ""}
+      ${invoice.client.address ? `<p>${escapeHtml(invoice.client.address)}${invoice.client.zip ? ` · CP ${escapeHtml(invoice.client.zip)}` : ""}</p>` : ""}
+      ${invoice.client.email ? `<p>${escapeHtml(invoice.client.email)}</p>` : ""}
+      ${invoice.client.phone ? `<p>Tel: ${escapeHtml(invoice.client.phone)}</p>` : ""}
+    </div>
+    <div class="payment">
+      <h2>PAGO</h2>
+      <p>${escapeHtml(PAYMENT_LABEL[invoice.paymentMethod])}</p>
+      <p>Moneda: ${escapeHtml(invoice.currency)} (${escapeHtml(CURRENCY_SYMBOL[invoice.currency])})</p>
+    </div>
+  </section>
+  <table>
+    <thead><tr><th>Cant.</th><th>Descripción</th><th>P. Unitario</th><th>Total</th></tr></thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+  <section class="totals">
+    <div class="total-row"><span>Subtotal</span><span>${escapeHtml(formatMoney(invoice.subtotal, invoice.currency))}</span></div>
+    <div class="total-row"><span>Seña</span><span>${escapeHtml(formatMoney(invoice.deposit, invoice.currency))}</span></div>
+    <div class="total-row grand-total"><span>Total</span><span>${escapeHtml(formatMoney(invoice.total, invoice.currency))}</span></div>
+    <div class="total-row balance"><span>Debe</span><span>${escapeHtml(formatMoney(invoice.balance, invoice.currency))}</span></div>
+  </section>
+  ${invoice.notes?.trim() ? `<section class="notes"><strong>OBSERVACIONES</strong><p>${escapeHtml(invoice.notes)}</p></section>` : ""}
+</body>
+</html>`;
+
+  const frame = document.createElement("iframe");
+  frame.title = `Imprimir remito ${invoice.number}`;
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.position = "fixed";
+  frame.style.left = "0";
+  frame.style.top = "0";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+
+  const cleanup = () => {
+    frame.remove();
+  };
+
+  frame.onload = () => {
+    try {
+      frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true });
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    } catch (error) {
+      cleanup();
+      throw error;
+    }
+  };
+  frame.srcdoc = html;
+  document.body.appendChild(frame);
 }
