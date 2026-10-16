@@ -77,6 +77,16 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
+        {isAuthenticated && user?.email && (
+          <div className="mx-3 mb-1 mt-3 rounded-xl border border-(--neon-cyan)/20 bg-linear-to-r from-(--neon-cyan)/10 via-background/70 to-(--neon-fuchsia)/10 px-3 py-2.5 shadow-[0_0_18px_rgba(0,229,255,0.06)] group-data-[collapsible=icon]:hidden">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-(--neon-cyan)">
+              Sesión activa
+            </p>
+            <p className="mt-1 truncate text-xs font-medium text-foreground" title={user.email}>
+              {user.email}
+            </p>
+          </div>
+        )}
         <SidebarGroup>
           <SidebarGroupLabel>Panel Administrativo</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -112,18 +122,17 @@ export function AppSidebar() {
               })}
               {isAuthenticated && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => { void logout(); }} tooltip="Cerrar sesión">
-                    <LogOut className="h-4 w-4" />
+                  <SidebarMenuButton
+                    className="text-fuchsia-400 hover:text-fuchsia-300 data-[active=true]:text-fuchsia-300"
+                    onClick={() => { void logout(); }}
+                    tooltip="Cerrar sesión"
+                  >
+                    <LogOut className="h-4 w-4 text-fuchsia-400" />
                     <span>Cerrar sesión</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
             </SidebarMenu>
-            {isAuthenticated && user?.email && (
-              <p className="mt-2 truncate px-2 text-[11px] text-muted-foreground group-data-[collapsible=icon]:hidden">
-                {user.email}
-              </p>
-            )}
             {!configured && (
               <p className="mt-1 px-2 text-[10px] text-muted-foreground group-data-[collapsible=icon]:hidden">
                 Configurá Kinde para habilitar el acceso.
