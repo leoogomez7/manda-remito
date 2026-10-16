@@ -65,10 +65,11 @@ function KindeSession({ children }: { children: React.ReactNode }) {
     action: typeof login | typeof register,
     email?: string,
     useCustomEmailConnection = true,
+    includeOrganization = true,
   ) => {
     try {
       const options = {
-        ...(AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {}),
+        ...(includeOrganization && AUTH_CONFIG.orgCode ? { orgCode: AUTH_CONFIG.orgCode } : {}),
         ...(useCustomEmailConnection && AUTH_CONFIG.emailConnectionId
           ? { connectionId: AUTH_CONFIG.emailConnectionId }
           : {}),
@@ -92,7 +93,7 @@ function KindeSession({ children }: { children: React.ReactNode }) {
         isLoading,
         user: user ?? null,
         login: (email) => startAuth(login, email),
-        register: () => startAuth(register, undefined, false),
+        register: () => startAuth(register, undefined, false, false),
         logout: () => logout(),
       }}
     >
