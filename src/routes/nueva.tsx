@@ -638,8 +638,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {(
                 [
-                  { id: "credito", label: "Crédito", icon: CreditCard },
-                  { id: "debito", label: "Débito", icon: CreditCard },
+                  { id: "credito", label: "Tarjeta de Crédito", icon: CreditCard },
+                  { id: "debito", label: "Tarjeta de Débito", icon: CreditCard },
                   { id: "transferencia", label: "Transferencia", icon: Landmark },
                   { id: "efectivo", label: "Efectivo", icon: Banknote },
                 ] as { id: PaymentMethod; label: string; icon: typeof CreditCard }[]
@@ -817,6 +817,19 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </div>
           </Section>
 
+          <Section title="Seña recibida">
+            <div className="sm:max-w-sm">
+              <Field label="Monto recibido">
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={form.deposit}
+                  onChange={(e) => update("deposit", Number(e.target.value))}
+                />
+              </Field>
+            </div>
+          </Section>
 
           {/* SECCIÓN: ENTREGA Y OBSERVACIONES */}
           <Section title="Entrega y observaciones">
@@ -824,6 +837,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <Field label="Fecha de emisión">
                 <Input
                   type="date"
+                  className="calendar-indicator-light"
                   value={form.issueDate}
                   onChange={(e) => update("issueDate", e.target.value)}
                 />
@@ -831,17 +845,9 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <Field label="Fecha estimada de entrega">
                 <Input
                   type="date"
+                  className="calendar-indicator-light"
                   value={form.deliveryDate}
                   onChange={(e) => update("deliveryDate", e.target.value)}
-                />
-              </Field>
-              <Field label="Seña recibida">
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={form.deposit}
-                  onChange={(e) => update("deposit", Number(e.target.value))}
                 />
               </Field>
             </div>

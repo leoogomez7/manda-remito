@@ -173,6 +173,10 @@
   .glow-cyan { box-shadow: var(--glow-cyan); }
   .glow-fuchsia { box-shadow: var(--glow-fuchsia); }
   .glow-soft { box-shadow: var(--glow-soft); }
+  .calendar-indicator-light::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.9;
+  }
   .border-gradient {
     position: relative;
     background-clip: padding-box;
