@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BorradoresRouteImport } from './routes/borradores'
+import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as HistorialRouteImport } from './routes/historial'
+import { Route as MisDatosRouteImport } from './routes/mis-datos'
 import { Route as NuevaRouteImport } from './routes/nueva'
 import { Route as PapeleraRouteImport } from './routes/papelera'
 
@@ -25,9 +27,19 @@ const BorradoresRoute = BorradoresRouteImport.update({
   path: '/borradores',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientesRoute = ClientesRouteImport.update({
+  id: '/clientes',
+  path: '/clientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistorialRoute = HistorialRouteImport.update({
   id: '/historial',
   path: '/historial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MisDatosRoute = MisDatosRouteImport.update({
+  id: '/mis-datos',
+  path: '/mis-datos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NuevaRoute = NuevaRouteImport.update({
@@ -44,14 +56,18 @@ const PapeleraRoute = PapeleraRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/borradores': typeof BorradoresRoute
+  '/clientes': typeof ClientesRoute
   '/historial': typeof HistorialRoute
+  '/mis-datos': typeof MisDatosRoute
   '/nueva': typeof NuevaRoute
   '/papelera': typeof PapeleraRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/borradores': typeof BorradoresRoute
+  '/clientes': typeof ClientesRoute
   '/historial': typeof HistorialRoute
+  '/mis-datos': typeof MisDatosRoute
   '/nueva': typeof NuevaRoute
   '/papelera': typeof PapeleraRoute
 }
@@ -59,22 +75,48 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/borradores': typeof BorradoresRoute
+  '/clientes': typeof ClientesRoute
   '/historial': typeof HistorialRoute
+  '/mis-datos': typeof MisDatosRoute
   '/nueva': typeof NuevaRoute
   '/papelera': typeof PapeleraRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/borradores' | '/historial' | '/nueva' | '/papelera'
+  fullPaths:
+    | '/'
+    | '/borradores'
+    | '/clientes'
+    | '/historial'
+    | '/mis-datos'
+    | '/nueva'
+    | '/papelera'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/borradores' | '/historial' | '/nueva' | '/papelera'
-  id: '__root__' | '/' | '/borradores' | '/historial' | '/nueva' | '/papelera'
+  to:
+    | '/'
+    | '/borradores'
+    | '/clientes'
+    | '/historial'
+    | '/mis-datos'
+    | '/nueva'
+    | '/papelera'
+  id:
+    | '__root__'
+    | '/'
+    | '/borradores'
+    | '/clientes'
+    | '/historial'
+    | '/mis-datos'
+    | '/nueva'
+    | '/papelera'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BorradoresRoute: typeof BorradoresRoute
+  ClientesRoute: typeof ClientesRoute
   HistorialRoute: typeof HistorialRoute
+  MisDatosRoute: typeof MisDatosRoute
   NuevaRoute: typeof NuevaRoute
   PapeleraRoute: typeof PapeleraRoute
 }
@@ -95,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BorradoresRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/clientes': {
+      id: '/clientes'
+      path: '/clientes'
+      fullPath: '/clientes'
+      preLoaderRoute: typeof ClientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/historial': {
       id: '/historial'
       path: '/historial'
       fullPath: '/historial'
       preLoaderRoute: typeof HistorialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mis-datos': {
+      id: '/mis-datos'
+      path: '/mis-datos'
+      fullPath: '/mis-datos'
+      preLoaderRoute: typeof MisDatosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nueva': {
@@ -122,7 +178,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BorradoresRoute: BorradoresRoute,
+  ClientesRoute: ClientesRoute,
   HistorialRoute: HistorialRoute,
+  MisDatosRoute: MisDatosRoute,
   NuevaRoute: NuevaRoute,
   PapeleraRoute: PapeleraRoute,
 }

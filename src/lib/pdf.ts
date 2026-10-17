@@ -1,10 +1,5 @@
-import {
-  BUSINESS,
-  CURRENCY_SYMBOL,
-  PAYMENT_LABEL,
-  formatMoney,
-  type Invoice,
-} from "./invoices";
+import { BUSINESS, getBusinessProfile } from "./business";
+import { CURRENCY_SYMBOL, PAYMENT_LABEL, formatMoney, type Invoice } from "./invoices";
 
 const CYAN = "#00E5FF";
 const FUCHSIA = "#FF00D4";
@@ -54,6 +49,7 @@ export async function generateInvoicePdf(invoice: Invoice) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const headerHeight = 150;
+  const businessProfile = invoice.businessProfile ?? getBusinessProfile();
 
   // Dark header band
   doc.setFillColor(DARK);
@@ -69,9 +65,12 @@ export async function generateInvoicePdf(invoice: Invoice) {
   const logoTop = 18;
   let logoHeight = 70;
 
-  if (invoice.logoDataUrl) {
+  const logoDataUrl = invoice.businessProfile
+    ? invoice.businessProfile.logoDataUrl
+    : invoice.logoDataUrl;
+  if (logoDataUrl) {
     try {
-      const logo = await loadLogo(invoice.logoDataUrl);
+      const logo = await loadLogo(logoDataUrl);
       const maxLogoWidth = 180;
       const maxLogoHeight = 70;
       const scale = Math.min(maxLogoWidth / logo.width, maxLogoHeight / logo.height, 1);
@@ -87,13 +86,17 @@ export async function generateInvoicePdf(invoice: Invoice) {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(LIGHT);
-  doc.text(BUSINESS.name, pageW - 40, textTop, { align: "right" });
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(MUTED);
-  doc.text(`${BUSINESS.role} • ${BUSINESS.location}`, pageW - 40, textTop + 14, { align: "right" });
-  doc.text(`${BUSINESS.email} • ${BUSINESS.phone}`, pageW - 40, textTop + 28, { align: "right" });
+  const profileLines = [
+    businessProfile.name,
+    businessProfile.location,
+    [businessProfile.email, businessProfile.phone].filter(Boolean).join(" • "),
+  ].filter(Boolean);
+  profileLines.forEach((line, index) => {
+    doc.setFont("helvetica", index === 0 ? "bold" : "normal");
+    doc.setFontSize(index === 0 ? 12 : 9);
+    doc.setTextColor(index === 0 ? LIGHT : MUTED);
+    doc.text(line, pageW - 40, textTop + index * 14, { align: "right" });
+  });
 
   // Document title and invoice details on the left
   doc.setTextColor(CYAN);

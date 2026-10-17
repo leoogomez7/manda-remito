@@ -4,8 +4,6 @@ import {
   Banknote,
   CreditCard,
   Download,
-  Eye,
-  EyeOff,
   FilePlus2,
   House,
   Landmark,
@@ -15,17 +13,23 @@ import {
   Save,
   Send,
   Trash2,
-  Upload,
-  X,
   Wallet,
+  Search,
+  Users,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { PASSWORD } from "@/lib/env";
 import {
   addDraft,
   addInvoice,
@@ -33,6 +37,8 @@ import {
   clearDraft,
   CURRENCY_SYMBOL,
   formatMoney,
+  getNextSettlementNumber,
+  getInvoices,
   getPendingInvoices,
   loadDraft,
   nextNumber,
@@ -45,10 +51,15 @@ import {
   type LineItem,
   type PaymentMethod,
 } from "@/lib/invoices";
-import { BUSINESS } from "@/lib/business";
+import { BUSINESS, getBusinessProfile } from "@/lib/business";
+import { useAppAuth } from "@/lib/auth";
+import { getSavedClients, mergeClientsWithInvoices } from "@/lib/clients";
 import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
 export const Route = createFileRoute("/nueva")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    settleInvoiceId: typeof search.settleInvoiceId === "string" ? search.settleInvoiceId : undefined,
+  }),
   component: NuevaFactura,
   head: () => ({
     meta: [
@@ -68,7 +79,6 @@ type FormState = {
   issueDate: string;
   deliveryDate: string;
   notes: string;
-  logoDataUrl?: string;
   deposit: number;
   client: Invoice["client"];
   items: LineItem[];
@@ -91,7 +101,6 @@ const initial: FormState = {
   issueDate: new Date().toISOString().slice(0, 10),
   deliveryDate: "",
   notes: "",
-  logoDataUrl: undefined,
   deposit: 0,
   client: { name: "", phone: "", cuit: "", address: "", zip: "", email: "" },
   items: [emptyItem()],
@@ -99,28 +108,38 @@ const initial: FormState = {
 
 export function NuevaFactura() {
   const navigate = useNavigate();
-  const logoInputRef = useRef<HTMLInputElement>(null);
+  const { settleInvoiceId: requestedSettlementId } = Route.useSearch();
+  const { user } = useAppAuth();
   const [form, setForm] = useState<FormState>(() => {
-    const draft = loadDraft<FormState>();
-    return draft || {
+    const draft = requestedSettlementId ? null : loadDraft<FormState>();
+    const startingForm = draft || {
       ...initial,
       issueDate: new Date().toISOString().slice(0, 10),
     };
+    return { ...startingForm, settleInvoiceId: requestedSettlementId ?? startingForm.settleInvoiceId };
   });
   const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   // const [nextNum, setNextNum] = useState("MF-000001");
   const [editingDraftId, setEditingDraftId] = useState<string | null>(() => {
+    if (requestedSettlementId) return null;
     const draft = loadDraft<FormState>();
     return draft ? draft.draftId ?? null : null;
   });
   const [nextNum, setNextNum] = useState(() => peekNextNumber());
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [clientSearch, setClientSearch] = useState("");
 
   // OPTIMIZACIÓN: useMemo evita leer el localStorage en cada renderizado
   const pendingInvoices = useMemo(() => getPendingInvoices(true), []);
+  const knownClients = useMemo(
+    () => mergeClientsWithInvoices(getSavedClients(user?.email), getInvoices()),
+    [user?.email],
+  );
+  const filteredClients = knownClients.filter((client) => {
+    const term = clientSearch.trim().toLowerCase();
+    return !term || [client.name, client.email, client.phone, client.cuit]
+      .some((value) => value.toLowerCase().includes(term));
+  });
 
   useEffect(() => {
     // Dejalo vacío o borralo, la inicialización ya se hizo arriba de forma nativa.
@@ -145,9 +164,9 @@ export function NuevaFactura() {
     const body = `Hola ${invoice.client.name || "cliente"},\n\nAdjunto se encuentra el remito ${invoice.number}. Total: ${formatMoney(invoice.total, invoice.currency)}.\n\nGracias por tu confianza.\n${BUSINESS.brand}`;
     
     if (invoice.client.email) {
-      const mailto = `mailto:${encodeURIComponent(invoice.client.email)}?cc=${encodeURIComponent(
-        BUSINESS.email,
-      )}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      const params = new URLSearchParams({ subject, body });
+      if (invoice.businessProfile?.email) params.set("cc", invoice.businessProfile.email);
+      const mailto = `mailto:${encodeURIComponent(invoice.client.email)}?${params.toString()}`;
       window.open(mailto, "_blank");
     }
 
@@ -162,6 +181,9 @@ export function NuevaFactura() {
   };
 
   const selectedPendingInvoice = pendingInvoices.find((invoice) => invoice.id === form.settleInvoiceId);
+  const displayNumber = selectedPendingInvoice
+    ? getNextSettlementNumber(selectedPendingInvoice)
+    : nextNum;
 
   useEffect(() => {
     if (!selectedPendingInvoice) return;
@@ -190,7 +212,9 @@ export function NuevaFactura() {
 
 
   const generateInvoice = async () => {
-    const num = nextNumber();
+    const num = selectedPendingInvoice
+      ? getNextSettlementNumber(selectedPendingInvoice)
+      : nextNumber();
     const rawPayment = Number(form.deposit) || 0;
     const payment = selectedPendingInvoice
       ? Math.min(rawPayment, selectedPendingInvoice.balance)
@@ -224,7 +248,7 @@ export function NuevaFactura() {
       items: form.items,
       deposit: payment,
       notes: selectedPendingInvoice && !form.notes ? `Pago de ${selectedPendingInvoice.number}` : form.notes,
-      logoDataUrl: form.logoDataUrl,
+      businessProfile: getBusinessProfile(user?.email),
       subtotal: totals.subtotal,
       total: totals.total,
       balance: totals.balance,
@@ -274,21 +298,7 @@ export function NuevaFactura() {
       return;
     }
 
-    setPasswordError("");
-    setPasswordInput("");
-    setShowPassword(false);
-    setPasswordModalOpen(true);
-  };
-
-  const handlePasswordSubmit = async () => {
-    if (passwordInput !== PASSWORD) {
-      setPasswordError("Contraseña incorrecta.");
-      return;
-    }
-
-    setPasswordModalOpen(false);
-    setPasswordInput("");
-    await generateInvoice();
+    void generateInvoice();
   };
 
   const saveDraftDocument = () => {
@@ -309,7 +319,7 @@ export function NuevaFactura() {
       items: form.items,
       deposit: Number(form.deposit) || 0,
       notes: form.notes,
-      logoDataUrl: form.logoDataUrl,
+      businessProfile: getBusinessProfile(user?.email),
       subtotal: totals.subtotal,
       total: totals.total,
       balance: totals.balance,
@@ -329,35 +339,6 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
 
   const updateClient = (patch: Partial<FormState["client"]>) => {
     setForm((s) => ({ ...s, client: { ...s.client, ...patch } }));
-  };
-
-  const handleLogoUpload = async (file?: File) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Seleccioná un archivo de imagen.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("La imagen debe pesar menos de 10 MB.");
-      return;
-    }
-
-    try {
-      const bitmap = await createImageBitmap(file);
-      const maxDimension = 600;
-      const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("No se pudo procesar la imagen.");
-      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-      bitmap.close();
-      update("logoDataUrl", canvas.toDataURL("image/png"));
-    } catch (error) {
-      console.error("No se pudo procesar el logo", error);
-      toast.error("No se pudo abrir esa imagen. Probá con otro formato.");
-    }
   };
 
   const updateItem = (id: string, patch: Partial<LineItem>) => {
@@ -536,13 +517,48 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
       >
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-            Nuevo remito · {nextNum}
+            Nuevo remito · {displayNumber}
           </p>
           <h1 className="mt-1 text-3xl font-bold">
             <span className="text-gradient">Generar</span> remito
           </h1>
         </div>
+        <Button type="button" variant="secondary" onClick={() => { setClientSearch(""); setClientPickerOpen(true); }}>
+          <Users className="mr-2 h-4 w-4" /> Seleccionar cliente
+        </Button>
       </motion.div>
+
+      <Dialog open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Seleccionar cliente</DialogTitle>
+            <DialogDescription>Elige un cliente para completar automáticamente sus datos en el remito.</DialogDescription>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={clientSearch} onChange={(event) => setClientSearch(event.target.value)} placeholder="Buscar por nombre, correo, teléfono o CUIT..." className="pl-9" />
+          </div>
+          {filteredClients.length ? (
+            <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
+              {filteredClients.map((client, index) => (
+                <div key={`${client.cuit}-${client.email}-${client.name}-${index}`} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{client.name || "Cliente sin nombre"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{[client.email, client.phone, client.cuit].filter(Boolean).join(" · ") || "Sin datos de contacto"}</p>
+                  </div>
+                  <Button type="button" size="sm" onClick={() => { updateClient(client); setClientPickerOpen(false); }}>
+                    Seleccionar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-xl border border-border/60 p-6 text-center text-sm text-muted-foreground">
+              No hay clientes guardados. Agrega clientes desde la sección «Clientes».
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Grid del Formulario */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -597,41 +613,6 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </div>
           </Section>
 
-          <Section title="Seleccionar logo" subtitle="Opcional · aparecerá en el encabezado del PDF">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              {form.logoDataUrl ? (
-                <div className="flex h-20 w-32 items-center justify-center rounded-xl border border-border/60 bg-background/60 p-2">
-                  <img src={form.logoDataUrl} alt="Vista previa del logo" className="max-h-full max-w-full object-contain" />
-                </div>
-              ) : (
-                <div className="flex h-20 w-32 items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/40 text-xs text-muted-foreground">
-                  Sin logo
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    void handleLogoUpload(event.target.files?.[0]);
-                    event.currentTarget.value = "";
-                  }}
-                />
-                <Button type="button" variant="secondary" onClick={() => logoInputRef.current?.click()}>
-                  <Upload className="mr-2 h-4 w-4" /> Importar desde la PC
-                </Button>
-                {form.logoDataUrl && (
-                  <Button type="button" variant="ghost" onClick={() => update("logoDataUrl", undefined)}>
-                    <X className="mr-2 h-4 w-4" /> Quitar logo
-                  </Button>
-                )}
-              </div>
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">Formatos de imagen que admita el navegador. Si no elegís uno, el remito se genera sin logo.</p>
-          </Section>
-
           {/* SECCIÓN: MÉTODO DE PAGO */}
           {/* SECCIÓN: MÉTODO DE PAGO */}
           <Section title="Método de pago">
@@ -640,7 +621,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 [
                   { id: "credito", label: "Tarjeta de Crédito", icon: CreditCard },
                   { id: "debito", label: "Tarjeta de Débito", icon: CreditCard },
-                  { id: "transferencia", label: "Transferencia", icon: Landmark },
+                  { id: "transferencia", label: "Transferencia Bancaria", icon: Landmark },
                   { id: "efectivo", label: "Efectivo", icon: Banknote },
                 ] as { id: PaymentMethod; label: string; icon: typeof CreditCard }[]
               ).map((m) => {
@@ -892,73 +873,11 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </div>
           </motion.div>
 
-          {passwordModalOpen && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
-              onClick={(event) => {
-                if (event.target === event.currentTarget) setPasswordModalOpen(false);
-              }}
-            >
-              <div className="relative w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
-                <button
-                  type="button"
-                  aria-label="Cerrar ventana de contraseña"
-                  className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  onClick={() => setPasswordModalOpen(false)}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-                <h2 className="pr-8 text-xl font-semibold">Contraseña requerida</h2>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Ingresa la contraseña para generar el remito.
-                </p>
-                <div className="relative mt-4">
-                  <input
-                    autoFocus
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    type={showPassword ? "text" : "password"}
-                    className="w-full rounded-2xl border border-border/60 bg-background/80 px-4 py-3 pr-12 text-sm outline-none focus:border-(--neon-cyan)/70"
-                    placeholder="Contraseña"
-                  />
-                  <button
-                    type="button"
-                    aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    aria-pressed={showPassword}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white transition-colors hover:bg-white/10 hover:text-white"
-                    onClick={() => setShowPassword((visible) => !visible)}
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                {passwordError && (
-                  <p className="mt-2 text-sm text-destructive">{passwordError}</p>
-                )}
-                <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-border/60 bg-card/80 px-4 py-3 text-sm transition hover:bg-card"
-                    onClick={() => setPasswordModalOpen(false)}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-2xl bg-linear-to-r from-[#00E5FF] to-[#FF00D4] px-5 py-3 text-sm font-semibold text-black shadow-[0_0_18px_rgba(0,229,255,0.2)] transition hover:opacity-90"
-                    onClick={handlePasswordSubmit}
-                  >
-                    Confirmar
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div className="glass rounded-2xl p-4 text-xs text-muted-foreground">
             <p className="mb-2 flex items-center gap-2 font-semibold text-foreground">
               <Receipt className="h-3.5 w-3.5" /> Número del remito
             </p>
-            <p className="font-mono text-base text-gradient">{nextNum}</p>
+            <p className="font-mono text-base text-gradient">{displayNumber}</p>
             <p className="mt-1">Número asignado al generar el remito.</p>
           </div>
         </aside>

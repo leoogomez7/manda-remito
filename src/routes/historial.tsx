@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Eye, EyeOff, FileText, Printer, Search, Trash2, X } from "lucide-react";
+import { BadgeCheck, Download, FileText, Printer, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -16,7 +17,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { PASSWORD } from "@/lib/env";
 import {
   formatMoney,
   getInvoices,
@@ -107,14 +107,9 @@ export const Route = createFileRoute("/historial")({
 });
 
 function HistorialPage() {
+  const navigate = useNavigate();
   const [list, setList] = useState<Invoice[]>([]);
   const [q, setQ] = useState("");
-  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
-     const [passwordInput, setPasswordInput] = useState<string>("");
-  const [passwordError, setPasswordError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [selectedPdfAction, setSelectedPdfAction] = useState<"download" | "print" | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
   useEffect(() => {
@@ -145,64 +140,49 @@ function HistorialPage() {
     toast.success("Remito movido a la papelera");
   };
 
-  const clearPasswordDialog = () => {
-    setPasswordModalOpen(false);
-    setPasswordInput("");
-    setPasswordError("");
-    setShowPassword(false);
-    setSelectedInvoice(null);
-    setSelectedPdfAction(null);
+  const handleSettleAccount = (invoice: Invoice) => {
+    if (isSampleInvoice(invoice)) return;
+    const allInvoices = getInvoices();
+    let root = allInvoices.find((item) => item.id === invoice.id) ?? invoice;
+    while (root.settlesInvoiceId) {
+      const parent = allInvoices.find((item) => item.id === root.settlesInvoiceId);
+      if (!parent) break;
+      root = parent;
+    }
+    if (root.balance <= 0 || root.status !== "pendiente") return;
+    void navigate({ to: "/nueva", search: { settleInvoiceId: root.id } });
+  };
+
+  const accountState = (invoice: Invoice) => {
+    if (isSampleInvoice(invoice)) return { settled: true, root: invoice };
+    const allInvoices = getInvoices();
+    let root = allInvoices.find((item) => item.id === invoice.id) ?? invoice;
+    while (root.settlesInvoiceId) {
+      const parent = allInvoices.find((item) => item.id === root.settlesInvoiceId);
+      if (!parent) break;
+      root = parent;
+    }
+    return { settled: root.balance <= 0 || root.status !== "pendiente", root };
   };
 
   const handleDownloadPDF = async (invoice: Invoice) => {
-    if (isSampleInvoice(invoice)) {
+    try {
       const pdf = await import("../lib/pdf");
-      pdf.downloadInvoicePdf(invoice);
-      return;
+      await pdf.downloadInvoicePdf(invoice);
+    } catch (error) {
+      console.error("No se pudo descargar el remito", error);
+      toast.error(`No se pudo descargar ${invoice.number}`);
     }
-
-    setSelectedInvoice(invoice);
-    setSelectedPdfAction("download");
-    setPasswordError("");
-    setPasswordInput("");
-    setShowPassword(false);
-    setPasswordModalOpen(true);
   };
 
   const handlePrintPDF = async (invoice: Invoice) => {
-    if (isSampleInvoice(invoice)) {
+    try {
       const pdf = await import("../lib/pdf");
-      pdf.printInvoicePdf(invoice);
-      return;
+      await pdf.printInvoicePdf(invoice);
+    } catch (error) {
+      console.error("No se pudo abrir la impresión del remito", error);
+      toast.error(`No se pudo imprimir ${invoice.number}`);
     }
-
-    setSelectedInvoice(invoice);
-    setSelectedPdfAction("print");
-    setPasswordError("");
-    setPasswordInput("");
-    setShowPassword(false);
-    setPasswordModalOpen(true);
-  };
-
-  const handlePasswordSubmit = async () => {
-    if (passwordInput !== PASSWORD) {
-      setPasswordError("Contraseña incorrecta.");
-      return;
-    }
-
-    if (!selectedInvoice || !selectedPdfAction) {
-      clearPasswordDialog();
-      return;
-    }
-
-    const pdf = await import("../lib/pdf");
-    if (selectedPdfAction === "download") {
-      pdf.downloadInvoicePdf(selectedInvoice);
-    } else {
-      pdf.printInvoicePdf(selectedInvoice);
-    }
-
-    clearPasswordDialog();
   };
 
   return (
@@ -311,6 +291,19 @@ function HistorialPage() {
                           <Printer className="h-4 w-4" />
                         </IconBtn>
 
+                        {(() => {
+                          const { settled, root } = accountState(i);
+                          return (
+                            <IconBtn
+                              title={settled ? "Cuenta saldada" : "Saldar cuenta"}
+                              onClick={() => handleSettleAccount(root)}
+                              disabled={settled}
+                            >
+                              <BadgeCheck className="h-4 w-4" />
+                            </IconBtn>
+                          );
+                        })()}
+
                         {!isSampleInvoice(i) && (
                           <IconBtn
                             title="Eliminar"
@@ -373,6 +366,21 @@ function HistorialPage() {
                     <Printer className="mr-1 h-3.5 w-3.5" /> Imprimir
                   </Button>
 
+                  {(() => {
+                    const { settled, root } = accountState(i);
+                    return (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={settled}
+                        title={settled ? "Cuenta saldada" : "Saldar cuenta"}
+                        onClick={() => handleSettleAccount(root)}
+                      >
+                        <BadgeCheck className="mr-1 h-3.5 w-3.5" /> Saldar cuenta
+                      </Button>
+                    );
+                  })()}
+
                   <Button
                     size="sm"
                     variant="ghost"
@@ -384,68 +392,6 @@ function HistorialPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {passwordModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) clearPasswordDialog();
-          }}
-        >
-          <div className="relative w-full max-w-md rounded-3xl bg-background p-6 shadow-xl ring-1 ring-border">
-            <button
-              type="button"
-              aria-label="Cerrar ventana de contraseña"
-              className="absolute right-4 top-4 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              onClick={clearPasswordDialog}
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <h2 className="pr-8 text-xl font-semibold">Contraseña requerida</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Ingresa la contraseña para descargar o imprimir este remito.
-            </p>
-            <div className="relative mt-4">
-              <input
-                autoFocus
-                value={passwordInput}
-                onChange={(e) => setPasswordInput(e.target.value)}
-                type={showPassword ? "text" : "password"}
-                className="w-full rounded-2xl border border-border/60 bg-background/80 px-4 py-3 pr-12 text-sm outline-none focus:border-(--neon-cyan)/70"
-                placeholder="Contraseña"
-              />
-              <button
-                type="button"
-                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                aria-pressed={showPassword}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-md p-1 text-white transition-colors hover:bg-white/10 hover:text-white"
-                onClick={() => setShowPassword((visible) => !visible)}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-            {passwordError && (
-              <p className="mt-2 text-sm text-destructive">{passwordError}</p>
-            )}
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                type="button"
-                className="rounded-2xl border border-border/60 bg-card/80 px-4 py-3 text-sm transition hover:bg-card"
-                onClick={clearPasswordDialog}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="rounded-2xl bg-linear-to-r from-[#00E5FF] to-[#FF00D4] px-4 py-3 text-sm font-semibold text-black transition hover:opacity-90"
-                onClick={handlePasswordSubmit}
-              >
-                Confirmar
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -495,24 +441,36 @@ function IconBtn({
   onClick,
   title,
   danger,
+  disabled = false,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   title: string;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      className={`rounded-md p-1.5 transition-colors ${
-        danger
-          ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
-      }`}
-    >
-      {children}
-    </button>
+    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={disabled ? 0 : undefined} className="inline-flex">
+            <button
+              type="button"
+              onClick={onClick}
+              aria-label={title}
+              disabled={disabled}
+              className={`rounded-md p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                danger
+                  ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                  : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
+              }`}
+            >
+              {children}
+            </button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6}>{title}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

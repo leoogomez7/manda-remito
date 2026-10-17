@@ -1,4 +1,5 @@
 import { BUSINESS } from "./business";
+import type { BusinessProfile } from "./business";
 
 export type DocType = "factura" | "recibo";
 export type PaymentMethod = "credito" | "debito" | "transferencia" | "efectivo";
@@ -37,6 +38,7 @@ export interface Invoice {
   status: "emitida" | "pendiente" | "borrador";
   settlesInvoiceId?: string;
   logoDataUrl?: string;
+  businessProfile?: BusinessProfile;
 }
 
 const KEY_INVOICES = "mf:invoices";
@@ -61,7 +63,7 @@ let _cachedPendingAll: Invoice[] | null = null;
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   credito: "Tarjeta de Crédito",
   debito: "Tarjeta de Débito",
-  transferencia: "Transferencia",
+  transferencia: "Transferencia Bancaria",
   efectivo: "Efectivo",
 };
 
@@ -121,6 +123,45 @@ export function nextNumber(): string {
 export function peekNextNumber(): string {
   const current = Number(localStorage.getItem(KEY_COUNTER) || "0");
   return `MF-${String(current + 1).padStart(6, "0")}`;
+}
+
+export function getNextSettlementNumber(invoice: Invoice): string {
+  const invoices = getInvoices();
+  const selectedInvoice = invoices.find((item) => item.id === invoice.id) ?? invoice;
+  const rootInvoice = findRootInvoice(selectedInvoice, invoices);
+  const prefix = `${rootInvoice.number}-`;
+  const trashEntries = typeof window === "undefined"
+    ? []
+    : safeParse<TrashEntry[]>(localStorage.getItem(KEY_TRASH), []).filter(
+        (entry) =>
+          entry.kind === "invoice" &&
+          Number.isFinite(Date.parse(entry.deletedAt)) &&
+          Date.now() - Date.parse(entry.deletedAt) < TRASH_RETENTION_MS,
+      );
+  const usedSuffixes = [...invoices, ...trashEntries.flatMap((entry) => entry.records)]
+    .map((item) => item.number.startsWith(prefix) ? item.number.slice(prefix.length) : "")
+    .filter((suffix) => /^[A-Z]+$/.test(suffix));
+  const nextSuffixIndex = usedSuffixes.reduce(
+    (max, suffix) => Math.max(max, lettersToIndex(suffix)),
+    -1,
+  ) + 1;
+
+  return `${prefix}${indexToLetters(nextSuffixIndex)}`;
+}
+
+function lettersToIndex(letters: string): number {
+  return [...letters].reduce((value, letter) => value * 26 + letter.charCodeAt(0) - 64, 0) - 1;
+}
+
+function indexToLetters(index: number): string {
+  let value = index + 1;
+  let result = "";
+  while (value > 0) {
+    value -= 1;
+    result = String.fromCharCode(65 + (value % 26)) + result;
+    value = Math.floor(value / 26);
+  }
+  return result;
 }
 
 export function addInvoice(invoice: Invoice) {

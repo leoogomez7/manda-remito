@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, CalendarClock, FileText, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarClock, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -17,6 +17,7 @@ import {
 import {
   formatMoney,
   getTrash,
+  PAYMENT_LABEL,
   permanentlyDeleteTrashEntry,
   restoreTrashEntry,
   type TrashEntry,
@@ -61,9 +62,6 @@ function PapeleraPage() {
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Eliminados recientemente</p>
           <h1 className="mt-1 text-3xl font-bold"><span className="text-gradient">Papelera</span></h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Los elementos se eliminan automáticamente después de 5 días.
-          </p>
         </div>
       </div>
 
@@ -79,9 +77,10 @@ function PapeleraPage() {
             <table className="w-full min-w-190 text-center text-sm">
               <thead className="bg-background/40">
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3">Tipo</th>
                   <th className="px-4 py-3">Número</th>
                   <th className="px-4 py-3">Cliente</th>
+                  <th className="px-4 py-3">Fecha</th>
+                  <th className="px-4 py-3">Pago</th>
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Se elimina</th>
                   <th className="px-4 py-3">Acciones</th>
@@ -94,15 +93,14 @@ function PapeleraPage() {
                   const daysLeft = Math.max(1, Math.ceil((expiry.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
                   return (
                     <tr key={entry.id} className="border-t border-border/40 hover:bg-card/40">
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center justify-center gap-2">
-                          {entry.kind === "draft" ? <Archive className="h-4 w-4 text-cyan-300" /> : <FileText className="h-4 w-4 text-fuchsia-300" />}
-                          {entry.kind === "draft" ? "Borrador" : "Remito"}
-                          {entry.records.length > 1 && <span className="text-xs text-muted-foreground">(+{entry.records.length - 1} cobros)</span>}
-                        </span>
-                      </td>
                       <td className="px-4 py-3 font-mono">{record.number}</td>
                       <td className="px-4 py-3">{record.client.name || "—"}</td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {record.issueDate
+                          ? new Date(`${record.issueDate}T00:00:00`).toLocaleDateString("es-AR")
+                          : new Date(record.createdAt).toLocaleDateString("es-AR")}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{PAYMENT_LABEL[record.paymentMethod]}</td>
                       <td className="px-4 py-3 font-semibold tabular-nums">{formatMoney(record.total, record.currency)}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         <span className="inline-flex items-center justify-center gap-1.5">

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, FileText, Plus, Trash2 } from "lucide-react";
+import { Archive, FileText, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatMoney, getDrafts, moveDraftToTrash, saveDraft, type Invoice } from "@/lib/invoices";
+import { formatMoney, getDrafts, moveDraftToTrash, PAYMENT_LABEL, saveDraft, type Invoice } from "@/lib/invoices";
 
 const sampleDraft: Invoice = {
   id: "__sample-draft",
@@ -88,7 +88,6 @@ function BorradoresPage() {
       items: draft.items,
       deposit: draft.deposit,
       notes: draft.notes,
-      logoDataUrl: draft.logoDataUrl,
     });
     navigate({ to: "/nueva" });
   };
@@ -126,13 +125,19 @@ function BorradoresPage() {
             <span className="text-gradient">Remitos borradores</span>
           </h1>
         </div>
-        <div className="relative w-full sm:w-72">
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar borradores..."
-            className="pl-3"
-          />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <Button asChild size="sm" className=".bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
+            <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo borrador</Link>
+          </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar borradores..."
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
@@ -143,20 +148,9 @@ function BorradoresPage() {
           <p className="text-sm text-muted-foreground">
             Guarda un remito como borrador para verlo aquí.
           </p>
-          <Button asChild className="mt-5 .bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
-            <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo borrador</Link>
-          </Button>
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-muted-foreground">
-              {filtered.length} borrador{filtered.length === 1 ? "" : "es"} guardado{filtered.length === 1 ? "" : "s"}.
-            </p>
-            <Button asChild size="sm" className=".bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
-              <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo borrador</Link>
-            </Button>
-          </div>
           <div className="glass border-gradient overflow-hidden rounded-2xl">
             <div className="overflow-x-auto md:overflow-visible">
             <table className="hidden min-w-full text-center text-sm md:table">
@@ -165,8 +159,9 @@ function BorradoresPage() {
                   <th className="px-4 py-3">Número</th>
                   <th className="px-4 py-3">Cliente</th>
                   <th className="px-4 py-3">Fecha</th>
-                  <th className="px-4 py-3">Tipo</th>
+                  <th className="px-4 py-3">Pago</th>
                   <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Seña recibida</th>
                   <th className="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
@@ -187,9 +182,12 @@ function BorradoresPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {new Date(draft.createdAt).toLocaleDateString("es-AR")}
                     </td>
-                    <td className="px-4 py-3 capitalize">{draft.type === "factura" ? "Remito" : "Recibo"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{PAYMENT_LABEL[draft.paymentMethod]}</td>
                     <td className="px-4 py-3 font-semibold tabular-nums">
                       {formatMoney(draft.total, draft.currency)}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {formatMoney(draft.deposit, draft.currency)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
@@ -230,12 +228,17 @@ function BorradoresPage() {
                       <p className="font-mono text-sm text-color:var(--neon-cyan)">{draft.number}</p>
                       <p className="mt-1 font-semibold">{draft.client.name || "—"}</p>
                       <p className="text-xs text-muted-foreground">
-                        {new Date(draft.createdAt).toLocaleDateString("es-AR")} · {draft.type === "factura" ? "Remito" : "Recibo"}
+                        {new Date(draft.createdAt).toLocaleDateString("es-AR")} · {PAYMENT_LABEL[draft.paymentMethod]}
                       </p>
                     </div>
-                    <p className="font-semibold tabular-nums">
-                      {formatMoney(draft.total, draft.currency)}
-                    </p>
+                    <div>
+                      <p className="font-semibold tabular-nums">
+                        Total: {formatMoney(draft.total, draft.currency)}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        Seña recibida: {formatMoney(draft.deposit, draft.currency)}
+                      </p>
+                    </div>
                   </div>
                   <div className="mt-3 flex flex-wrap justify-center gap-2">
                     {!isSampleDraft(draft) ? (

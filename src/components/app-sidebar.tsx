@@ -1,13 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useState } from "react";
-import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -15,7 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import logo from "@/assets/logo.png";
-import { BUSINESS } from "@/lib/business";
+import { getBusinessProfile, type BusinessProfile } from "@/lib/business";
 import { useAppAuth } from "@/lib/auth";
 import { AUTH_CONFIG } from "@/lib/env";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 
 const items = [
+  { title: "Mis datos", url: "/mis-datos", icon: UserRound },
+  { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Menú principal", url: "/", icon: LayoutDashboard },
   { title: "Nuevo remito", url: "/nueva", icon: FilePlus2 },
   { title: "Remitos borradores", url: "/borradores", icon: Archive },
@@ -42,6 +43,11 @@ export function AppSidebar() {
   const { configured, isAuthenticated, login, register, logout, user } = useAppAuth();
   const [authDialog, setAuthDialog] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile>(() => getBusinessProfile());
+
+  useEffect(() => {
+    setBusinessProfile(getBusinessProfile(user?.email));
+  }, [user?.email]);
 
   const openLoginDialog = () => {
     setAuthDialog(true);
@@ -88,7 +94,6 @@ export function AppSidebar() {
           </div>
         )}
         <SidebarGroup>
-          <SidebarGroupLabel>Panel Administrativo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {!isAuthenticated && (
@@ -144,9 +149,8 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <div className="px-2 py-3 text-xs group-data-[collapsible=icon]:hidden">
-          <p className="font-medium text-foreground">{BUSINESS.name}</p>
-          <p className="text-muted-foreground">{BUSINESS.role}</p>
-          <p className="text-muted-foreground">{BUSINESS.location}</p>
+          {businessProfile.name && <p className="font-medium text-foreground">{businessProfile.name}</p>}
+          {businessProfile.location && <p className="text-muted-foreground">{businessProfile.location}</p>}
         </div>
       </SidebarFooter>
     </Sidebar>
