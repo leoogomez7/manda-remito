@@ -60,7 +60,7 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
     logoDataUrl: storedProfile?.logoDataUrl || currentProfile.logoDataUrl || invoice.logoDataUrl,
   };
   const logoDataUrl = businessProfile.logoDataUrl;
-  const logoTop = 28;
+  const logoTop = 22;
   let logoImage: Awaited<ReturnType<typeof loadLogo>> | null = null;
   if (logoDataUrl) {
     try {
@@ -78,7 +78,7 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   const logoWidth = logoImage ? logoImage.width * logoScale : 0;
   const logoHeight = logoImage ? logoImage.height * logoScale : 0;
   const textTop = 24;
-  const headerHeight = 112;
+  const headerHeight = 96;
 
   // Dark header band, sized to the actual content to avoid a large empty top
   // area when the remito has no custom logo.
@@ -205,10 +205,10 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   const boxX = pageW - 280;
   const boxW = 240;
   doc.setFillColor("#0F1218");
-  doc.roundedRect(boxX, afterTableY, boxW, 110, 8, 8, "F");
+  doc.roundedRect(boxX, afterTableY, boxW, 122, 8, 8, "F");
   doc.setDrawColor(CYAN);
   doc.setLineWidth(0.6);
-  doc.roundedRect(boxX, afterTableY, boxW, 110, 8, 8, "S");
+  doc.roundedRect(boxX, afterTableY, boxW, 122, 8, 8, "S");
 
   const labelX = boxX + 16;
   const valueX = boxX + boxW - 16;
@@ -216,7 +216,7 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   doc.setTextColor(MUTED);
   doc.text("Subtotal", labelX, afterTableY + 24);
   doc.text("Seña", labelX, afterTableY + 44);
-  doc.text("Debe", labelX, afterTableY + 88);
+  doc.text("Debe", labelX, afterTableY + 106);
 
   doc.setTextColor(LIGHT);
   doc.setFont("helvetica", "normal");
@@ -234,7 +234,7 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
 
   doc.setFontSize(11);
   doc.setTextColor(FUCHSIA);
-  doc.text(formatMoney(invoice.balance, invoice.currency), valueX, afterTableY + 88, { align: "right" });
+  doc.text(formatMoney(invoice.balance, invoice.currency), valueX, afterTableY + 106, { align: "right" });
 
   // Notes
   if (invoice.notes?.trim()) {
