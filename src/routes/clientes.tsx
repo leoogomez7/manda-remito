@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppAuth } from "@/lib/auth";
 import { emptyClient, getSavedClients, mergeClientsWithInvoices, sameClient, saveClient, type ClientData } from "@/lib/clients";
+import { getBusinessProfile } from "@/lib/business";
 import { formatMoney, getInvoices, saveInvoices, type Currency, type Invoice } from "@/lib/invoices";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
@@ -88,7 +89,7 @@ function ClientesPage() {
   const downloadInvoice = async (invoice: Invoice) => {
     try {
       const { downloadInvoicePdf } = await import("@/lib/pdf");
-      await downloadInvoicePdf(invoice);
+      await downloadInvoicePdf(invoice, getBusinessProfile(user?.email));
     } catch (error) {
       console.error("No se pudo descargar el remito", error);
       toast.error(`No se pudo descargar ${invoice.number}`);

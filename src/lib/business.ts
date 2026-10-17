@@ -10,6 +10,13 @@ export const BUSINESS = {
   brand: "Manda Remito",
 };
 
+export const SAMPLE_BUSINESS_PROFILE: BusinessProfile = {
+  name: "Empresa de ejemplo",
+  location: "Buenos Aires, Argentina",
+  email: "contacto@ejemplo.com",
+  phone: "+54 11 5555-0101",
+};
+
 const PROFILE_KEY_PREFIX = "mf:business-profile:";
 
 function profileStorageKey(userEmail?: string) {
@@ -29,7 +36,7 @@ export function getBusinessProfile(userEmail?: string): BusinessProfile {
       return {
         name: profile.name ?? "",
         location: profile.location ?? "",
-        email: profile.email ?? userEmail ?? "",
+        email: userEmail?.trim() || profile.email || "",
         phone: profile.phone ?? "",
         logoDataUrl: profile.logoDataUrl,
       };

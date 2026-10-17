@@ -10,10 +10,10 @@ import {
 
 import appCss from "../styles.css?url";
 import logo from "@/assets/logo.png";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAppAuth } from "@/lib/auth";
 
 function NotFoundComponent() {
   return (
@@ -135,12 +135,7 @@ function RootComponent() {
           <div className="flex min-h-screen w-full">
             <AppSidebar />
             <div className="flex flex-1 flex-col">
-              <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-background/60 px-4 backdrop-blur">
-                <SidebarTrigger />
-                <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Manda Remito
-                </div>
-              </header>
+              <AppHeader />
               <main className="flex-1">
                 <Outlet />
               </main>
@@ -150,5 +145,26 @@ function RootComponent() {
         </SidebarProvider>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AppHeader() {
+  const { state } = useSidebar();
+  const { isAuthenticated, user } = useAppAuth();
+
+  return (
+    <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-background/60 px-4 backdrop-blur">
+      <SidebarTrigger />
+      <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Manda Remito</div>
+      {state === "collapsed" && isAuthenticated && user?.email && (
+        <div className="ml-auto flex min-w-0 items-center gap-2 rounded-full border border-(--neon-cyan)/20 bg-background/70 px-3 py-1.5 text-xs">
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
+          <span className="shrink-0 text-muted-foreground">Sesión activa</span>
+          <span className="max-w-[35vw] truncate font-medium text-foreground sm:max-w-64" title={user.email}>
+            {user.email}
+          </span>
+        </div>
+      )}
+    </header>
   );
 }

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAppAuth } from "@/lib/auth";
+import { getBusinessProfile } from "@/lib/business";
 import {
   Dialog,
   DialogClose,
@@ -108,6 +110,7 @@ export const Route = createFileRoute("/historial")({
 
 function HistorialPage() {
   const navigate = useNavigate();
+  const { user } = useAppAuth();
   const [list, setList] = useState<Invoice[]>([]);
   const [q, setQ] = useState("");
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
@@ -168,7 +171,7 @@ function HistorialPage() {
   const handleDownloadPDF = async (invoice: Invoice) => {
     try {
       const pdf = await import("../lib/pdf");
-      await pdf.downloadInvoicePdf(invoice);
+      await pdf.downloadInvoicePdf(invoice, getBusinessProfile(user?.email));
     } catch (error) {
       console.error("No se pudo descargar el remito", error);
       toast.error(`No se pudo descargar ${invoice.number}`);
@@ -178,7 +181,7 @@ function HistorialPage() {
   const handlePrintPDF = async (invoice: Invoice) => {
     try {
       const pdf = await import("../lib/pdf");
-      await pdf.printInvoicePdf(invoice);
+      await pdf.printInvoicePdf(invoice, getBusinessProfile(user?.email));
     } catch (error) {
       console.error("No se pudo abrir la impresión del remito", error);
       toast.error(`No se pudo imprimir ${invoice.number}`);

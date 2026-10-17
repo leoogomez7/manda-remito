@@ -1,4 +1,4 @@
-import { BUSINESS, getBusinessProfile } from "./business";
+import { BUSINESS, getBusinessProfile, SAMPLE_BUSINESS_PROFILE, type BusinessProfile } from "./business";
 import { CURRENCY_SYMBOL, PAYMENT_LABEL, formatMoney, type Invoice } from "./invoices";
 
 const CYAN = "#00E5FF";
@@ -40,7 +40,7 @@ function formatDateOrRaw(value: string) {
   return value && !isNaN(date.getTime()) ? date.toLocaleDateString("es-AR") : value || "—";
 }
 
-export async function generateInvoicePdf(invoice: Invoice) {
+export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfile?: BusinessProfile) {
   // 🚀 CARGA BAJO DEMANDA: Se descargan solo cuando se ejecuta la función
   const { default: jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
@@ -48,10 +48,40 @@ export async function generateInvoicePdf(invoice: Invoice) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const headerHeight = 150;
-  const businessProfile = invoice.businessProfile ?? getBusinessProfile();
+  const isSampleInvoice = invoice.id.startsWith("__sample");
+  const currentProfile = currentBusinessProfile ??
+    (isSampleInvoice ? SAMPLE_BUSINESS_PROFILE : getBusinessProfile());
+  const storedProfile = invoice.businessProfile;
+  const businessProfile: BusinessProfile = {
+    name: storedProfile?.name?.trim() || currentProfile.name || BUSINESS.brand,
+    location: storedProfile?.location?.trim() || currentProfile.location,
+    email: storedProfile?.email?.trim() || currentProfile.email,
+    phone: storedProfile?.phone?.trim() || currentProfile.phone,
+    logoDataUrl: storedProfile?.logoDataUrl || currentProfile.logoDataUrl || invoice.logoDataUrl,
+  };
+  const logoDataUrl = businessProfile.logoDataUrl;
+  const logoTop = 28;
+  let logoImage: Awaited<ReturnType<typeof loadLogo>> | null = null;
+  if (logoDataUrl) {
+    try {
+      logoImage = await loadLogo(logoDataUrl);
+    } catch (error) {
+      console.warn("No se pudo cargar el logo elegido en el PDF", error);
+    }
+  }
 
-  // Dark header band
+  const maxLogoWidth = 72;
+  const maxLogoHeight = 52;
+  const logoScale = logoImage
+    ? Math.min(maxLogoWidth / logoImage.width, maxLogoHeight / logoImage.height, 1)
+    : 0;
+  const logoWidth = logoImage ? logoImage.width * logoScale : 0;
+  const logoHeight = logoImage ? logoImage.height * logoScale : 0;
+  const textTop = 24;
+  const headerHeight = 112;
+
+  // Dark header band, sized to the actual content to avoid a large empty top
+  // area when the remito has no custom logo.
   doc.setFillColor(DARK);
   doc.rect(0, 0, pageW, headerHeight, "F");
 
@@ -61,28 +91,10 @@ export async function generateInvoicePdf(invoice: Invoice) {
   doc.setFillColor(FUCHSIA);
   doc.rect(pageW / 2, headerHeight - 2, pageW / 2, 3, "F");
 
-  // Logo in header, centered at top
-  const logoTop = 18;
-  let logoHeight = 70;
-
-  const logoDataUrl = invoice.businessProfile
-    ? invoice.businessProfile.logoDataUrl
-    : invoice.logoDataUrl;
-  if (logoDataUrl) {
-    try {
-      const logo = await loadLogo(logoDataUrl);
-      const maxLogoWidth = 180;
-      const maxLogoHeight = 70;
-      const scale = Math.min(maxLogoWidth / logo.width, maxLogoHeight / logo.height, 1);
-      const logoWidth = logo.width * scale;
-      logoHeight = logo.height * scale;
-      doc.addImage(logo.dataUrl, "PNG", pageW / 2 - logoWidth / 2, logoTop, logoWidth, logoHeight);
-    } catch (error) {
-      console.warn("No se pudo cargar el logo elegido en el PDF", error);
-    }
+  if (logoImage) {
+    doc.addImage(logoImage.dataUrl, "PNG", 40, logoTop, logoWidth, logoHeight);
   }
 
-  const textTop = logoTop + logoHeight + 10;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(LIGHT);
@@ -102,16 +114,17 @@ export async function generateInvoicePdf(invoice: Invoice) {
   doc.setTextColor(CYAN);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("REMITO", 40, textTop);
+  const titleX = logoImage ? 126 : 40;
+  doc.text("REMITO", titleX, textTop + 8);
 
   doc.setTextColor(LIGHT);
   doc.setFontSize(12);
-  doc.text(invoice.number, 40, textTop + 18);
+  doc.text(invoice.number, titleX, textTop + 26);
 
   doc.setTextColor(MUTED);
   doc.setFontSize(9);
-  doc.text(`Emitido: ${formatDateOrRaw(invoice.issueDate || invoice.createdAt)}`, 40, textTop + 32);
-  doc.text(`Entrega: ${formatDateOrRaw(invoice.deliveryDate)}`, 40, textTop + 46);
+  doc.text(`Emitido: ${formatDateOrRaw(invoice.issueDate || invoice.createdAt)}`, titleX, textTop + 40);
+  doc.text(`Entrega: ${formatDateOrRaw(invoice.deliveryDate)}`, titleX, textTop + 52);
 
   const clientTop = headerHeight + 18;
 
@@ -249,8 +262,8 @@ export async function generateInvoicePdf(invoice: Invoice) {
   return doc;
 }
 
-export async function downloadInvoicePdf(invoice: Invoice) {
-  const doc = await generateInvoicePdf(invoice);
+export async function downloadInvoicePdf(invoice: Invoice, businessProfile?: BusinessProfile) {
+  const doc = await generateInvoicePdf(invoice, businessProfile);
   const fileName = `${invoice.number}-${invoice.client.name || "cliente"}.pdf`;
 
   try {
@@ -268,8 +281,8 @@ export async function downloadInvoicePdf(invoice: Invoice) {
   }
 }
 
-export async function printInvoicePdf(invoice: Invoice) {
-  const doc = await generateInvoicePdf(invoice);
+export async function printInvoicePdf(invoice: Invoice, businessProfile?: BusinessProfile) {
+  const doc = await generateInvoicePdf(invoice, businessProfile);
   const blob = doc.output("blob");
   const url = URL.createObjectURL(blob);
 
