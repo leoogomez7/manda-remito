@@ -517,7 +517,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
       >
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-            Nuevo remito · {displayNumber}
+            Generar remito · {displayNumber}
           </p>
           <h1 className="mt-1 text-3xl font-bold">
             <span className="text-gradient">Generar</span> remito
@@ -859,7 +859,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 className="w-full .bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black hover:opacity-90"
                 onClick={handleGenerateClick}
               >
-                <Send className="mr-2 h-4 w-4" /> Generar remito
+                <Send className="mr-2 h-4 w-4" /> Nuevo remito
               </Button>
 
               <Button

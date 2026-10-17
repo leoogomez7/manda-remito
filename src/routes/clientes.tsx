@@ -135,7 +135,7 @@ function ClientesPage() {
                   const saved = savedClients.find((item) => sameClient(item.client, client));
                   return (
                     <tr key={saved?.id ?? `${client.name}-${client.email}-${index}`} className="border-t border-border/40 hover:bg-card/40">
-                      <td className="px-4 py-3 text-left">
+                      <td className="px-4 py-3 text-center">
                         <p className="font-semibold">{client.name || "Cliente sin nombre"}</p>
                         <p className="text-xs text-muted-foreground">{client.email || client.phone || "Sin contacto"}</p>
                       </td>

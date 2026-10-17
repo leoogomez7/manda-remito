@@ -78,8 +78,8 @@ function MisDatosPage() {
       </div>
 
       <section className="glass border-gradient space-y-5 rounded-2xl p-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2 sm:col-span-2">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="space-y-2">
             <Label htmlFor="business-name">Nombre empresa</Label>
             <Input
               id="business-name"
@@ -88,7 +88,7 @@ function MisDatosPage() {
               placeholder="Nombre de tu empresa"
             />
           </div>
-          <div className="space-y-2 sm:col-span-2">
+          <div className="space-y-2">
             <Label htmlFor="business-location">Ubicación</Label>
             <Input
               id="business-location"
@@ -103,8 +103,11 @@ function MisDatosPage() {
               id="business-email"
               type="email"
               value={profile.email}
-              onChange={(event) => update("email", event.target.value)}
+              readOnly
+              aria-readonly="true"
+              title="El correo corresponde a la cuenta con la que iniciaste sesión y no se puede modificar."
               placeholder="contacto@empresa.com"
+              className="cursor-not-allowed opacity-60"
             />
           </div>
           <div className="space-y-2">

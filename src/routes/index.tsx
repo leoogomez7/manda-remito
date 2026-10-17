@@ -126,8 +126,7 @@ function Dashboard() {
             Panel
           </p>
           <h1 className="mt-1 text-3xl font-bold sm:text-4xl">
-            <span className="text-gradient">Manda Remito</span>{" "}
-            <span className="text-foreground/90">Studio</span>
+            <span className="text-gradient">Menú Principal</span>{" "}
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             Generá remitos profesionales, todo se guarda en tu cuenta.
