@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getBusinessProfile, saveBusinessProfile, type BusinessProfile } from "@/lib/business";
 import { useAppAuth } from "@/lib/auth";
-import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
+import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
 export const Route = createFileRoute("/mis-datos")({
   component: MisDatosPage,
@@ -67,7 +67,7 @@ function MisDatosPage() {
   };
 
   return (
-    <div className={PAGE_CONTAINER_CLASS}>
+    <div className={cn(PAGE_CONTAINER_CLASS, "pl-8")}>
       <div className="mb-6">
         <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Cuenta</p>
         <h1 className="mt-1 text-3xl font-bold"><span className="text-gradient">Mis datos</span></h1>

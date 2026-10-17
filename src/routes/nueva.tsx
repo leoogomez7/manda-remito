@@ -536,7 +536,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           </DialogHeader>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={clientSearch} onChange={(event) => setClientSearch(event.target.value)} placeholder="Buscar por nombre, correo, teléfono o CUIT..." className="pl-9" />
+            <Input value={clientSearch} onChange={(event) => setClientSearch(event.target.value)} placeholder="Buscar por nombre, correo, o CUIT..." className="pl-9" />
           </div>
           {filteredClients.length ? (
             <div className="max-h-[55vh] space-y-2 overflow-y-auto pr-1">
@@ -544,7 +544,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 <div key={`${client.cuit}-${client.email}-${client.name}-${index}`} className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card/40 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <p className="truncate font-semibold">{client.name || "Cliente sin nombre"}</p>
-                    <p className="truncate text-xs text-muted-foreground">{[client.email, client.phone, client.cuit].filter(Boolean).join(" · ") || "Sin datos de contacto"}</p>
+                    <p className="truncate text-xs text-muted-foreground">{[client.email, client.cuit].filter(Boolean).join(" · ") || "Sin datos de contacto"}</p>
                   </div>
                   <Button type="button" size="sm" onClick={() => { updateClient(client); setClientPickerOpen(false); }}>
                     Seleccionar

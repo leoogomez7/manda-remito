@@ -198,7 +198,7 @@ function ClientesPage() {
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setClientDialogOpen(false)}><X className="mr-2 h-4 w-4" />Cancelar</Button>
               <Button type="submit">
-                {editingClient ? <Pencil className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                <Save className="mr-2 h-4 w-4" />
                 {editingClient ? "Guardar cambios" : "Guardar cliente"}
               </Button>
             </DialogFooter>
