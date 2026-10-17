@@ -82,6 +82,7 @@ function PapeleraPage() {
                   <th className="px-4 py-3">Fecha</th>
                   <th className="px-4 py-3">Pago</th>
                   <th className="px-4 py-3">Total</th>
+                  <th className="px-4 py-3">Seña</th>
                   <th className="px-4 py-3">Se elimina</th>
                   <th className="px-4 py-3">Acciones</th>
                 </tr>
@@ -102,6 +103,7 @@ function PapeleraPage() {
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{PAYMENT_LABEL[record.paymentMethod]}</td>
                       <td className="px-4 py-3 font-semibold tabular-nums">{formatMoney(record.total, record.currency)}</td>
+                      <td className="px-4 py-3 tabular-nums">{formatMoney(record.deposit, record.currency)}</td>
                       <td className="px-4 py-3 text-muted-foreground">
                         <span className="inline-flex items-center justify-center gap-1.5">
                           <CalendarClock className="h-4 w-4" />

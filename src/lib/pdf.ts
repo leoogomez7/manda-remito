@@ -290,11 +290,10 @@ export async function printInvoicePdf(invoice: Invoice, businessProfile?: Busine
   frame.title = `Imprimir remito ${invoice.number}`;
   frame.setAttribute("aria-hidden", "true");
   frame.style.position = "fixed";
-  frame.style.left = "0";
+  frame.style.left = "-10000px";
   frame.style.top = "0";
   frame.style.width = "100vw";
   frame.style.height = "100vh";
-  frame.style.opacity = "0.01";
   frame.style.pointerEvents = "none";
   frame.style.border = "0";
 
