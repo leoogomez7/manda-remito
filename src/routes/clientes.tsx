@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Plus, Search, Users } from "lucide-react";
+import { Download, Pencil, Plus, Search, Users, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAppAuth } from "@/lib/auth";
 import { emptyClient, getSavedClients, mergeClientsWithInvoices, sameClient, saveClient, type ClientData } from "@/lib/clients";
-import { formatMoney, getInvoices, type Currency, type Invoice } from "@/lib/invoices";
+import { formatMoney, getInvoices, saveInvoices, type Currency, type Invoice } from "@/lib/invoices";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
 export const Route = createFileRoute("/clientes")({
@@ -38,6 +38,7 @@ function ClientesPage() {
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
   const [remitosClient, setRemitosClient] = useState<ClientData | null>(null);
   const [formClient, setFormClient] = useState<ClientData>(emptyClient);
+  const [editingClient, setEditingClient] = useState<ClientData | null>(null);
 
   useEffect(() => {
     setSavedClients(getSavedClients(user?.email));
@@ -57,6 +58,12 @@ function ClientesPage() {
   const invoicesForClient = (client: ClientData) => invoices.filter((invoice) => sameClient(client, invoice.client));
   const openNewClient = () => {
     setFormClient(emptyClient());
+    setEditingClient(null);
+    setClientDialogOpen(true);
+  };
+  const openEditClient = (client: ClientData) => {
+    setFormClient({ ...client });
+    setEditingClient({ ...client });
     setClientDialogOpen(true);
   };
   const handleSaveClient = (event: React.FormEvent<HTMLFormElement>) => {
@@ -64,8 +71,18 @@ function ClientesPage() {
     const saved = saveClient(formClient, user?.email);
     if (!saved) return;
     setSavedClients(getSavedClients(user?.email));
+    if (editingClient) {
+      const updatedInvoices = getInvoices().map((invoice) =>
+        sameClient(editingClient, invoice.client)
+          ? { ...invoice, client: { ...formClient } }
+          : invoice,
+      );
+      saveInvoices(updatedInvoices);
+      setInvoices(updatedInvoices);
+    }
     setClientDialogOpen(false);
-    toast.success("Cliente guardado");
+    setEditingClient(null);
+    toast.success(editingClient ? "Datos del cliente actualizados" : "Cliente guardado");
   };
 
   const downloadInvoice = async (invoice: Invoice) => {
@@ -127,6 +144,7 @@ function ClientesPage() {
                   <th className="px-4 py-3">Total señado</th>
                   <th className="px-4 py-3">Total</th>
                   <th className="px-4 py-3">Ver</th>
+                  <th className="px-4 py-3">Editar</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,6 +169,11 @@ function ClientesPage() {
                           <Plus className="h-4 w-4" />
                         </Button>
                       </td>
+                      <td className="px-4 py-3">
+                        <Button size="icon" variant="secondary" aria-label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -163,14 +186,21 @@ function ClientesPage() {
       <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Nuevo cliente</DialogTitle>
-            <DialogDescription>Guarda los datos para seleccionarlos al crear futuros remitos.</DialogDescription>
+            <DialogTitle>{editingClient ? "Editar cliente" : "Nuevo cliente"}</DialogTitle>
+            <DialogDescription>
+              {editingClient
+                ? "Actualiza los datos guardados y los datos de cliente en sus remitos existentes."
+                : "Guarda los datos para seleccionarlos al crear futuros remitos."}
+            </DialogDescription>
           </DialogHeader>
           <form className="space-y-5" onSubmit={handleSaveClient}>
             <ClientFields client={formClient} onChange={setFormClient} />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setClientDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit"><Plus className="mr-2 h-4 w-4" />Guardar cliente</Button>
+              <Button type="button" variant="outline" onClick={() => setClientDialogOpen(false)}><X className="mr-2 h-4 w-4" />Cancelar</Button>
+              <Button type="submit">
+                {editingClient ? <Pencil className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                {editingClient ? "Guardar cambios" : "Guardar cliente"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

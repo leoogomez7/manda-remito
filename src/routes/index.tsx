@@ -119,13 +119,13 @@ function Dashboard() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+        className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
       >
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
             Panel
           </p>
-          <h1 className="mt-1 text-3xl font-bold sm:text-4xl">
+          <h1 className="mt-1 text-3xl font-bold">
             <span className="text-gradient">Menú Principal</span>{" "}
           </h1>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">

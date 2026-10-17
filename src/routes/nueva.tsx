@@ -520,7 +520,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             Generar remito · {displayNumber}
           </p>
           <h1 className="mt-1 text-3xl font-bold">
-            <span className="text-gradient">Generar</span> remito
+            <span className="text-gradient">Generar remito</span>
           </h1>
         </div>
         <Button type="button" variant="secondary" onClick={() => { setClientSearch(""); setClientPickerOpen(true); }}>
