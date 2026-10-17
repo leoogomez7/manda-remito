@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, FileText, Trash2 } from "lucide-react";
+import { Archive, FileText, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -144,20 +144,21 @@ function BorradoresPage() {
             Guarda un remito como borrador para verlo aquí.
           </p>
           <Button asChild className="mt-5 .bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
-            <Link to="/nueva">Crear nuevo remito</Link>
+            <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo borrador</Link>
           </Button>
         </div>
       ) : (
-        <div className="glass border-gradient overflow-hidden rounded-2xl">
+        <div className="space-y-4">
           <div className="flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between">
             <p className="text-sm text-muted-foreground">
               {filtered.length} borrador{filtered.length === 1 ? "" : "es"} guardado{filtered.length === 1 ? "" : "s"}.
             </p>
             <Button asChild size="sm" className=".bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
-              <Link to="/nueva">Crear nuevo</Link>
+              <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo borrador</Link>
             </Button>
           </div>
-          <div className="overflow-x-auto md:overflow-visible">
+          <div className="glass border-gradient overflow-hidden rounded-2xl">
+            <div className="overflow-x-auto md:overflow-visible">
             <table className="hidden min-w-full text-center text-sm md:table">
               <thead className="bg-background/40">
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -264,6 +265,7 @@ function BorradoresPage() {
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </div>
       )}
