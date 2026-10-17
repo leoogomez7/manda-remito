@@ -253,6 +253,7 @@ function HistorialPage() {
                 <th className="px-4 py-3">Fecha</th>
                 <th className="px-4 py-3">Pago</th>
                 <th className="px-4 py-3">Total</th>
+                <th className="px-4 py-3">Seña recibida</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Acciones</th>
               </tr>
@@ -287,6 +288,9 @@ function HistorialPage() {
                     </td>
                     <td className="px-4 py-3 tabular-nums font-semibold">
                       {formatMoney(i.total, i.currency)}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {formatMoney(i.deposit, i.currency)}
                     </td>
                     <td className="px-4 py-3">
                       <StatusPill status={i.status} />
@@ -343,6 +347,9 @@ function HistorialPage() {
                   <div>
                     <p className="font-bold tabular-nums">
                       {formatMoney(i.total, i.currency)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Seña recibida: {formatMoney(i.deposit, i.currency)}
                     </p>
                     <StatusPill status={i.status} />
                   </div>

@@ -792,31 +792,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </div>
           </Section>
 
-          <Section title="Moneda y seña recibida">
+          <Section title="Seña recibida">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Moneda">
-                <div className="grid grid-cols-2 gap-3">
-                  {(["ARS", "USD"] as Currency[]).map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => update("currency", c)}
-                      className={cn(
-                        "group relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-sm font-semibold transition-all duration-200 active:scale-[0.98]",
-                        form.currency === c
-                          ? "border-(--neon-cyan)/70 bg-card text-(--neon-cyan) glow-cyan shadow-[0_0_15px_rgba(0,229,255,0.15)]"
-                          : "border-border/60 bg-card/40 text-muted-foreground hover:border-(--neon-fuchsia)/40 hover:text-foreground",
-                      )}
-                    >
-                      <span>{c}</span>
-                      <span className="text-xs">{CURRENCY_SYMBOL[c]}</span>
-                      {form.currency === c && (
-                        <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-(--neon-cyan)/60" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </Field>
               <Field label="Seña recibida">
                 <Input
                   type="number"
@@ -825,6 +802,19 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   value={form.deposit}
                   onChange={(e) => update("deposit", Number(e.target.value))}
                 />
+              </Field>
+              <Field label="Moneda">
+                <select
+                  value={form.currency}
+                  onChange={(e) => update("currency", e.target.value as Currency)}
+                  className="w-full rounded-xl border border-border/60 bg-background/80 px-3 py-2"
+                >
+                  {(["ARS", "USD"] as Currency[]).map((currency) => (
+                    <option key={currency} value={currency}>
+                      {currency} ({CURRENCY_SYMBOL[currency]})
+                    </option>
+                  ))}
+                </select>
               </Field>
             </div>
           </Section>

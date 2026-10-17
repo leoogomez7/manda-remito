@@ -61,8 +61,8 @@ let _cachedPendingAll: Invoice[] | null = null;
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   credito: "Tarjeta de Crédito",
   debito: "Tarjeta de Débito",
-  transferencia: "Transferencia Bancaria",
-  efectivo: "Efectivo / Contado",
+  transferencia: "Transferencia",
+  efectivo: "Efectivo",
 };
 
 export const CURRENCY_SYMBOL: Record<Currency, string> = {
