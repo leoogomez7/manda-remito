@@ -114,7 +114,7 @@ function Dashboard() {
   const PIE_COLORS = ["#00E5FF", "#FF00D4", "#7C3AED", "#22D3EE"];
 
   return (
-    <div className={cn(PAGE_CONTAINER_CLASS, "pb-8 sm:pb-10")}>
+    <div className={cn(PAGE_CONTAINER_CLASS, "pl-8 pb-8 sm:pb-10")}>
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
