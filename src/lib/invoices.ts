@@ -134,12 +134,7 @@ export function removeInvoice(id: string) {
   const invoice = invoices.find((item) => item.id === id);
   if (!invoice) return;
 
-  const rootInvoice = findRootInvoice(invoice, invoices);
-  saveInvoices(
-    invoices.filter(
-      (item) => item.id !== rootInvoice.id && !isLinkedToInvoice(item, rootInvoice.id, invoices),
-    ),
-  );
+  saveInvoices(removeInvoiceRecord(id, invoices));
 }
 
 export function moveInvoiceToTrash(id: string) {
@@ -147,17 +142,49 @@ export function moveInvoiceToTrash(id: string) {
   const invoice = invoices.find((item) => item.id === id);
   if (!invoice) return;
 
-  const rootInvoice = findRootInvoice(invoice, invoices);
-  const records = invoices.filter(
-    (item) => item.id === rootInvoice.id || isLinkedToInvoice(item, rootInvoice.id, invoices),
-  );
   addTrashEntry({
     id: crypto.randomUUID(),
     kind: "invoice",
     deletedAt: new Date().toISOString(),
-    records,
+    records: [invoice],
   });
-  saveInvoices(invoices.filter((item) => !records.some((record) => record.id === item.id)));
+  saveInvoices(removeInvoiceRecord(id, invoices));
+}
+
+function removeInvoiceRecord(id: string, invoices: Invoice[]): Invoice[] {
+  const deletedInvoice = invoices.find((invoice) => invoice.id === id);
+  if (!deletedInvoice) return invoices;
+
+  const remaining = invoices.filter((invoice) => invoice.id !== id);
+  const parentStillExists = deletedInvoice.settlesInvoiceId
+    ? remaining.find((invoice) => invoice.id === deletedInvoice.settlesInvoiceId)
+    : undefined;
+  const directChildren = remaining
+    .filter((invoice) => invoice.settlesInvoiceId === id)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+
+  if (directChildren.length === 0) return remaining;
+
+  // Keep the saved balance/status on each remito. If the deleted record was
+  // the root, the latest child becomes the root so the current saldo remains
+  // authoritative instead of summing historical saldo snapshots.
+  const replacementRoot = parentStillExists ? undefined : directChildren[0];
+  return remaining.map((invoice) => {
+    if (invoice.settlesInvoiceId !== id) return invoice;
+    if (parentStillExists) {
+      return { ...invoice, settlesInvoiceId: parentStillExists.id };
+    }
+    if (invoice.id === replacementRoot?.id) {
+      return {
+        ...invoice,
+        settlesInvoiceId: undefined,
+        deposit: deletedInvoice.deposit,
+        balance: deletedInvoice.balance,
+        status: deletedInvoice.status,
+      };
+    }
+    return { ...invoice, settlesInvoiceId: replacementRoot?.id };
+  });
 }
 
 export function updateInvoice(invoice: Invoice) {

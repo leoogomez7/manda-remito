@@ -7,15 +7,14 @@ import { Button } from "@/components/ui/button";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import { toast } from "sonner";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { PASSWORD } from "@/lib/env";
 import {
@@ -444,22 +443,24 @@ function HistorialPage() {
         </div>
       )}
 
-      <AlertDialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
-        <AlertDialogContent className="border-border/70 bg-background">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Enviar remito a la papelera</AlertDialogTitle>
-            <AlertDialogDescription>
-              El remito y sus cobros relacionados permanecerán en la papelera durante 5 días. Después se eliminarán definitivamente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+      <Dialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <DialogContent className="border-border/70 bg-background">
+          <DialogHeader>
+            <DialogTitle>Enviar remito a la papelera</DialogTitle>
+            <DialogDescription>
+              Solo este remito se moverá a la papelera durante 5 días. Los cobros relacionados permanecerán en el historial.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Mover a papelera
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
