@@ -292,8 +292,10 @@ export async function printInvoicePdf(invoice: Invoice, businessProfile?: Busine
   frame.style.position = "fixed";
   frame.style.left = "0";
   frame.style.top = "0";
-  frame.style.width = "1px";
-  frame.style.height = "1px";
+  frame.style.width = "100vw";
+  frame.style.height = "100vh";
+  frame.style.opacity = "0.01";
+  frame.style.pointerEvents = "none";
   frame.style.border = "0";
 
   const cleanup = () => {
@@ -302,14 +304,18 @@ export async function printInvoicePdf(invoice: Invoice, businessProfile?: Busine
   };
 
   frame.onload = () => {
-    try {
-      frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true });
-      frame.contentWindow?.focus();
-      frame.contentWindow?.print();
-    } catch (error) {
-      cleanup();
-      throw error;
-    }
+    frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true });
+    // Let the browser's built-in PDF viewer finish rendering before opening
+    // the print dialog; printing a 1x1 iframe immediately often yields blank pages.
+    window.setTimeout(() => {
+      try {
+        frame.contentWindow?.focus();
+        frame.contentWindow?.print();
+      } catch (error) {
+        cleanup();
+        console.error("No se pudo abrir el diálogo de impresión", error);
+      }
+    }, 500);
   };
   document.body.appendChild(frame);
   frame.src = url;
