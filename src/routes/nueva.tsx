@@ -720,31 +720,6 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </div>
           </Section>
 
-          {/* SECCIÓN: MONEDA */}
-          <Section title="Moneda">
-            <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
-              {(["ARS", "USD"] as Currency[]).map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => update("currency", c)}
-                  className={cn(
-                    "group relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-sm font-semibold transition-all duration-200 active:scale-[0.98]",
-                    form.currency === c
-                      ? "border-(--neon-cyan)/70 bg-card text-(--neon-cyan) glow-cyan shadow-[0_0_15px_rgba(0,229,255,0.15)]"
-                      : "border-border/60 bg-card/40 text-muted-foreground hover:border-(--neon-fuchsia)/40 hover:text-foreground",
-                  )}
-                >
-                  <span>{c}</span>
-                  <span className="text-xs">{CURRENCY_SYMBOL[c]}</span>
-                  {form.currency === c && (
-                    <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-(--neon-cyan)/60" />
-                  )}
-                </button>
-              ))}
-            </div>
-          </Section>
-
                     {/* SECCIÓN: PRODUCTOS / SERVICIOS */}
           <Section
             title="Productos / Servicios"
@@ -817,9 +792,32 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </div>
           </Section>
 
-          <Section title="Seña recibida">
-            <div className="sm:max-w-sm">
-              <Field label="Monto recibido">
+          <Section title="Moneda y seña recibida">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field label="Moneda">
+                <div className="grid grid-cols-2 gap-3">
+                  {(["ARS", "USD"] as Currency[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => update("currency", c)}
+                      className={cn(
+                        "group relative flex min-h-16 flex-col items-center justify-center gap-1 rounded-xl border p-3 text-center text-sm font-semibold transition-all duration-200 active:scale-[0.98]",
+                        form.currency === c
+                          ? "border-(--neon-cyan)/70 bg-card text-(--neon-cyan) glow-cyan shadow-[0_0_15px_rgba(0,229,255,0.15)]"
+                          : "border-border/60 bg-card/40 text-muted-foreground hover:border-(--neon-fuchsia)/40 hover:text-foreground",
+                      )}
+                    >
+                      <span>{c}</span>
+                      <span className="text-xs">{CURRENCY_SYMBOL[c]}</span>
+                      {form.currency === c && (
+                        <div className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-(--neon-cyan)/60" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Seña recibida">
                 <Input
                   type="number"
                   min={0}
