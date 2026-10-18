@@ -24,9 +24,9 @@ To create a Mercado Pago payment link after the remito is confirmed, add these V
 - `MERCADOPAGO_ACCESS_TOKEN` — secret access token; it is only read by `/api/create-payment-preference` and must never use a `VITE_` prefix.
 - `MERCADOPAGO_PUBLIC_KEY` — public key retained for client-side Mercado Pago SDK/Brick integrations. The current Checkout Pro redirect does not need to expose or use it.
 - `APP_URL` — optional canonical HTTPS origin used for Mercado Pago return URLs. If omitted, the API uses the request origin.
-- `GRATIS2026` — server-only value of the promotional code that grants a 100% discount. Enter the same value in the remito confirmation modal to save the remito without Mercado Pago. Do not add a `VITE_` prefix.
+- `GRATIS2026` — server-only value of the promotional code that bonifies the ARS 2,000 remito-generation service fee. The code never changes the remito's item values, client deposits, totals, or balance. Enter the same value in the confirmation modal to generate without paying the fee. Do not add a `VITE_` prefix.
 
-The confirmation modal lets the user return to editing or confirm and proceed to checkout. The API authenticates the Kinde user and creates a preference through Mercado Pago; the browser only receives the checkout URL. Configure live or test credentials consistently. The current integration redirects to Mercado Pago but does not yet process payment webhooks or automatically mark remitos as paid when Mercado Pago confirms a payment.
+The confirmation modal shows the remito totals separately from the ARS 2,000 generation fee. Without a valid code, the authenticated API creates a Mercado Pago preference for the fixed ARS fee; the remito is not saved or generated until the app verifies an approved payment with Mercado Pago. With a valid code, the fee is waived and the remito is generated immediately. Configure live or test credentials consistently. The current integration verifies the return from Checkout Pro; it does not use payment webhooks to handle cases where the user does not return to the app.
 
 ## 3. First login and data migration
 

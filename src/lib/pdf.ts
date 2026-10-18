@@ -204,18 +204,8 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   const afterTableY: number = doc.lastAutoTable.finalY + 20;
   const boxX = pageW - 280;
   const boxW = 240;
-  const hasDiscount = (invoice.discount ?? 0) > 0;
-  const detailRows: Array<{ label: string; value: string; color?: string }> = [
+  const detailRows = [
     { label: "Subtotal", value: formatMoney(invoice.subtotal, invoice.currency) },
-    ...((invoice.priceAdjustment ?? 0) !== 0
-      ? [{
-          label: "Ajuste importe fijo",
-          value: `${(invoice.priceAdjustment ?? 0) < 0 ? "−" : "+"}${formatMoney(Math.abs(invoice.priceAdjustment ?? 0), invoice.currency)}`,
-        }]
-      : []),
-    ...(hasDiscount
-      ? [{ label: "Descuento (100%)", value: `−${formatMoney(invoice.discount ?? 0, invoice.currency)}`, color: CYAN }]
-      : []),
     { label: "Seña", value: formatMoney(invoice.deposit, invoice.currency) },
   ];
   const detailStartY = 22;
@@ -236,9 +226,9 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   doc.setFont("helvetica", "normal");
   detailRows.forEach((row, index) => {
     const y = afterTableY + detailStartY + index * rowSpacing;
-    doc.setTextColor(row.color ?? MUTED);
+    doc.setTextColor(MUTED);
     doc.text(row.label, labelX, y);
-    doc.setTextColor(row.color ?? LIGHT);
+    doc.setTextColor(LIGHT);
     doc.text(row.value, valueX, y, { align: "right" });
   });
 

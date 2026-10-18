@@ -3,9 +3,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 type PaymentRequest = {
   number?: unknown;
-  amount?: unknown;
-  currency?: unknown;
 };
+
+const REMITO_GENERATION_FEE_ARS = 2000;
 
 function requiredEnv(name: string): string {
   const value = process.env[name]?.trim();
@@ -56,9 +56,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
 
   const body = request.body as PaymentRequest | undefined;
   const number = typeof body?.number === "string" ? body.number.trim() : "";
-  const amount = Number(body?.amount);
-  const currency = body?.currency;
-  if (!number || number.length > 100 || !Number.isFinite(amount) || amount <= 0 || amount > 100_000_000 || !["ARS", "USD"].includes(String(currency))) {
+  if (!number || number.length > 100) {
     return response.status(400).json({ error: "Los datos del pago no son válidos." });
   }
 
@@ -73,9 +71,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
       if (url.protocol === "https:" || url.hostname === "localhost" || url.hostname === "127.0.0.1") {
         const base = url.origin;
         backUrls = {
-          success: `${base}/historial?payment=success`,
-          pending: `${base}/historial?payment=pending`,
-          failure: `${base}/historial?payment=failure`,
+          success: `${base}/nueva?payment=success`,
+          pending: `${base}/nueva?payment=pending`,
+          failure: `${base}/nueva?payment=failure`,
         };
       }
     }
@@ -91,10 +89,10 @@ export default async function handler(request: VercelRequest, response: VercelRe
       body: JSON.stringify({
         items: [{
           id: number,
-          title: `Remito ${number} — Manda Remito`,
+          title: `Servicio de generación de remito ${number} — Manda Remito`,
           quantity: 1,
-          unit_price: Math.round(amount * 100) / 100,
-          currency_id: currency,
+          unit_price: REMITO_GENERATION_FEE_ARS,
+          currency_id: "ARS",
         }],
         external_reference: number,
         ...(backUrls ? { back_urls: backUrls, auto_return: "approved" } : {}),

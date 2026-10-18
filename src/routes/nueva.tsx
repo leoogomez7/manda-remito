@@ -53,7 +53,7 @@ import {
   type PaymentMethod,
 } from "@/lib/invoices";
 import { getBusinessProfile } from "@/lib/business";
-import { flushCloudChanges } from "@/lib/cloud-sync";
+import { flushCloudChanges, scopedStorageKey } from "@/lib/cloud-sync";
 import { useAppAuth } from "@/lib/auth";
 import { getSavedClients, mergeClientsWithInvoices } from "@/lib/clients";
 import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -61,6 +61,8 @@ import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
 export const Route = createFileRoute("/nueva")({
   validateSearch: (search: Record<string, unknown>) => ({
     settleInvoiceId: typeof search.settleInvoiceId === "string" ? search.settleInvoiceId : undefined,
+    payment: search.payment === "success" || search.payment === "failure" || search.payment === "pending" ? search.payment : undefined,
+    payment_id: typeof search.payment_id === "string" ? search.payment_id : undefined,
   }),
   component: NuevaFactura,
   head: () => ({
@@ -86,7 +88,7 @@ type FormState = {
   items: LineItem[];
 };
 
-const FIXED_INVOICE_TOTAL = 2000;
+const REMITO_GENERATION_FEE_ARS = 2000;
 
 const emptyItem = (): LineItem => ({
   id: crypto.randomUUID(),
@@ -112,7 +114,7 @@ const initial: FormState = {
 
 export function NuevaFactura() {
   const navigate = useNavigate();
-  const { settleInvoiceId: requestedSettlementId } = Route.useSearch();
+  const { settleInvoiceId: requestedSettlementId, payment: paymentResult, payment_id: paymentId } = Route.useSearch();
   const { user, getIdToken } = useAppAuth();
   const workingDraftDirty = useRef(false);
   const [form, setForm] = useState<FormState>(() => {
@@ -129,7 +131,7 @@ export function NuevaFactura() {
   const [validatingCode, setValidatingCode] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
   const [discountApplied, setDiscountApplied] = useState(false);
-  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const processedPaymentId = useRef<string | null>(null);
   // const [nextNum, setNextNum] = useState("MF-000001");
   const [editingDraftId, setEditingDraftId] = useState<string | null>(() => {
     if (requestedSettlementId) return null;
@@ -156,9 +158,6 @@ export function NuevaFactura() {
     () => calcTotals(form.items, form.deposit),
     [form.items, form.deposit],
   );
-  const fixedPriceAdjustment = FIXED_INVOICE_TOTAL - totals.subtotal;
-  const cappedDeposit = Math.min(Number(form.deposit) || 0, FIXED_INVOICE_TOTAL);
-  const amountDue = Math.max(0, FIXED_INVOICE_TOTAL - cappedDeposit);
 
   useEffect(() => {
     if (!workingDraftDirty.current) return;
@@ -220,12 +219,10 @@ export function NuevaFactura() {
       toast.error(error instanceof Error ? error.message : "No se pudo conectar con la base de datos. Intentá nuevamente.");
       return;
     }
-    const discount = applyDiscount ? FIXED_INVOICE_TOTAL : 0;
-    const total = applyDiscount ? 0 : FIXED_INVOICE_TOTAL;
-    const rawPayment = applyDiscount ? 0 : Number(form.deposit) || 0;
+    const rawPayment = Number(form.deposit) || 0;
     const payment = selectedPendingInvoice
-      ? Math.min(rawPayment, FIXED_INVOICE_TOTAL, selectedPendingInvoice.balance)
-      : Math.min(rawPayment, FIXED_INVOICE_TOTAL);
+      ? Math.min(rawPayment, selectedPendingInvoice.balance)
+      : rawPayment;
     const invoice: Invoice = {
       id: crypto.randomUUID(),
       number: num,
@@ -241,16 +238,13 @@ export function NuevaFactura() {
       notes: selectedPendingInvoice && !form.notes ? `Pago de ${selectedPendingInvoice.number}` : form.notes,
       businessProfile: getBusinessProfile(user?.email),
       subtotal: totals.subtotal,
-      ...(fixedPriceAdjustment !== 0 ? { priceAdjustment: fixedPriceAdjustment } : {}),
-      ...(discount > 0 ? { discount } : {}),
-      total,
-      balance: Math.max(0, total - payment),
-      status: total - payment > 0 ? "pendiente" : "emitida",
+      total: totals.total,
+      balance: totals.balance,
+      status: totals.balance > 0 ? "pendiente" : "emitida",
       settlesInvoiceId: selectedPendingInvoice?.id,
     };
 
-    let checkoutUrl: string | null = null;
-    if (invoice.balance > 0) {
+    if (!applyDiscount) {
       try {
         const token = await getIdToken();
         if (!token) throw new Error("No se pudo validar tu sesión para iniciar el pago.");
@@ -260,14 +254,19 @@ export function NuevaFactura() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ number: invoice.number, amount: invoice.balance, currency: invoice.currency }),
+          body: JSON.stringify({ number: invoice.number }),
           cache: "no-store",
         });
         const result = await response.json().catch(() => ({})) as { paymentUrl?: string; error?: string };
         if (!response.ok || !result.paymentUrl) {
           throw new Error(result.error || "No se pudo crear el enlace de pago de Mercado Pago.");
         }
-        checkoutUrl = result.paymentUrl;
+        const pendingKey = scopedStorageKey("mf:pending-remito-checkout", user?.email);
+        localStorage.setItem(pendingKey, JSON.stringify(invoice));
+        saveDraft({ ...form, ...(editingDraftId ? { draftId: editingDraftId } : {}) });
+        setConfirmationOpen(false);
+        window.location.assign(result.paymentUrl);
+        return;
       } catch (error) {
         console.error("No se pudo iniciar el pago con Mercado Pago", error);
         toast.error(error instanceof Error ? error.message : "No se pudo iniciar el pago.");
@@ -284,7 +283,6 @@ export function NuevaFactura() {
     addInvoice(invoice);
     clearDraft();
     setGeneratedInvoice(invoice);
-    setPaymentUrl(checkoutUrl);
     setDiscountCode("");
     setDiscountApplied(false);
     setConfirmationOpen(false);
@@ -312,7 +310,6 @@ export function NuevaFactura() {
       });
     }
 
-    if (checkoutUrl) window.location.assign(checkoutUrl);
   };
 
   const handleGenerateClick = () => {
@@ -333,7 +330,7 @@ export function NuevaFactura() {
     setCreatingPayment(true);
     try {
       let applyDiscount = false;
-      if (discountCode.trim()) {
+      if (discountApplied && discountCode.trim()) {
         const token = await getIdToken();
         if (!token) throw new Error("No se pudo validar tu sesión para verificar el código.");
         const response = await fetch("/api/validate-discount-code", {
@@ -385,7 +382,7 @@ export function NuevaFactura() {
         throw new Error(result.error || "El código ingresado no es válido.");
       }
       setDiscountApplied(true);
-      toast.success("Código aplicado: 100% de descuento");
+      toast.success("Código aplicado: generación bonificada");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo verificar el código.");
     } finally {
@@ -393,16 +390,79 @@ export function NuevaFactura() {
     }
   };
 
-  const continueToPayment = async () => {
-    if (!paymentUrl) return;
-    try {
-      await flushCloudChanges();
-      window.location.assign(paymentUrl);
-    } catch (error) {
-      console.error("No se pudo sincronizar el remito antes de abrir el pago", error);
-      toast.error("No se pudo sincronizar el remito. Verifica tu conexión e intenta otra vez.");
-    }
-  };
+  useEffect(() => {
+    if (paymentResult !== "success" || !paymentId || !user?.email || processedPaymentId.current === paymentId) return;
+    processedPaymentId.current = paymentId;
+
+    const completePaidGeneration = async () => {
+      setCreatingPayment(true);
+      try {
+        const pendingKey = scopedStorageKey("mf:pending-remito-checkout", user.email);
+        const pendingInvoice = JSON.parse(localStorage.getItem(pendingKey) || "null") as Invoice | null;
+        if (!pendingInvoice?.number || !pendingInvoice.id) {
+          throw new Error("No se encontró el remito pendiente de pago en este dispositivo.");
+        }
+
+        const token = await getIdToken();
+        if (!token) throw new Error("No se pudo validar tu sesión para confirmar el pago.");
+        const response = await fetch("/api/verify-remito-payment", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ paymentId, number: pendingInvoice.number }),
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({})) as { approved?: boolean; error?: string };
+        if (!response.ok || !result.approved) {
+          throw new Error(result.error || "Mercado Pago todavía no confirmó el pago. El remito no se generó.");
+        }
+
+        addInvoice(pendingInvoice);
+        localStorage.removeItem(pendingKey);
+        if (editingDraftId) removeDraft(editingDraftId);
+        setEditingDraftId(null);
+        clearDraft();
+        workingDraftDirty.current = false;
+        setGeneratedInvoice(pendingInvoice);
+        resetForm();
+
+        try {
+          await flushCloudChanges();
+        } catch (error) {
+          console.error("No se pudo confirmar la sincronización del remito pagado", error);
+          toast.error("El remito quedó guardado en este dispositivo, pero la sincronización con la nube sigue pendiente.");
+        }
+
+        try {
+          const { downloadInvoicePdf } = await import("@/lib/pdf");
+          await downloadInvoicePdf(pendingInvoice);
+        } catch (error) {
+          console.error("No se pudo descargar el PDF del remito pagado", error);
+          toast.error("El pago fue aprobado y el remito se generó, pero no se pudo descargar el PDF.");
+        }
+        toast.success(`Pago aprobado. Remito ${pendingInvoice.number} generado.`);
+        await navigate({ to: "/nueva", replace: true });
+      } catch (error) {
+        console.error("No se pudo confirmar el pago del remito", error);
+        toast.error(error instanceof Error ? error.message : "No se pudo confirmar el pago.");
+        await navigate({ to: "/nueva", replace: true });
+      } finally {
+        setCreatingPayment(false);
+      }
+    };
+
+    void completePaidGeneration();
+  }, [paymentResult, paymentId, user?.email, getIdToken, editingDraftId, navigate]);
+
+  useEffect(() => {
+    if (paymentResult !== "failure" && paymentResult !== "pending") return;
+    toast.error(paymentResult === "failure"
+      ? "El pago no se aprobó. No se generó el remito; puedes volver a intentarlo."
+      : "El pago está pendiente de aprobación. No se generó el remito todavía.");
+    void navigate({ to: "/nueva", replace: true });
+  }, [paymentResult, navigate]);
 
   const saveDraftDocument = () => {
     workingDraftDirty.current = false;
@@ -519,17 +579,11 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 type="button"
                 onClick={() => {
                   setGeneratedInvoice(null);
-                  setPaymentUrl(null);
                   navigate({ to: "/nueva" });
                 }}
               >
                 <FilePlus2 className="mr-2 h-4 w-4" /> Generar otro remito
               </Button>
-              {paymentUrl && (
-                <Button type="button" onClick={() => void continueToPayment()}>
-                  <Send className="mr-2 h-4 w-4" /> Continuar al pago
-                </Button>
-              )}
               <Button
                 type="button"
                 variant="secondary"
@@ -581,18 +635,6 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   <span>Subtotal</span>
                   <span>{formatMoney(generatedInvoice.subtotal, generatedInvoice.currency)}</span>
                 </div>
-                {(generatedInvoice.priceAdjustment ?? 0) !== 0 && (
-                  <div className="flex justify-between">
-                    <span>Ajuste al importe fijo</span>
-                    <span>{(generatedInvoice.priceAdjustment ?? 0) < 0 ? "−" : "+"}{formatMoney(Math.abs(generatedInvoice.priceAdjustment ?? 0), generatedInvoice.currency)}</span>
-                  </div>
-                )}
-                {(generatedInvoice.discount ?? 0) > 0 && (
-                  <div className="flex justify-between text-(--neon-cyan)">
-                    <span>Descuento (100%)</span>
-                    <span>−{formatMoney(generatedInvoice.discount ?? 0, generatedInvoice.currency)}</span>
-                  </div>
-                )}
                 <div className="flex justify-between">
                   <span>Seña</span>
                   <span>{formatMoney(generatedInvoice.deposit, generatedInvoice.currency)}</span>
@@ -907,10 +949,9 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 <Input
                   type="number"
                   min={0}
-                  max={FIXED_INVOICE_TOTAL}
                   step="0.01"
                   value={form.deposit}
-                  onChange={(e) => update("deposit", Math.min(Number(e.target.value) || 0, FIXED_INVOICE_TOTAL))}
+                  onChange={(e) => update("deposit", Number(e.target.value))}
                 />
               </Field>
               <Field label="Moneda">
@@ -972,8 +1013,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <Row label="Subtotal" value={formatMoney(totals.subtotal, form.currency)} />
               <Row label="Seña" value={formatMoney(form.deposit, form.currency)} muted />
               <div className="my-3 h-px .bg-gradient-to-r from-transparent via-(--neon-cyan)/40 to-transparent" />
-              <Row label="Total del remito" value={formatMoney(FIXED_INVOICE_TOTAL, form.currency)} bold accent="cyan" />
-              <Row label="Debe" value={formatMoney(amountDue, form.currency)} bold accent="fuchsia" />
+              <Row label="Total" value={formatMoney(totals.total, form.currency)} bold accent="cyan" />
+              <Row label="Debe" value={formatMoney(totals.balance, form.currency)} bold accent="fuchsia" />
             </dl>
 
             <div className="mt-5 space-y-2 text-xs text-muted-foreground">
@@ -1017,7 +1058,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           <DialogHeader>
             <DialogTitle>Confirma los datos del remito</DialogTitle>
             <DialogDescription>
-              Revisa el cliente, los conceptos y el total. Al confirmar, se guardará el remito y, si queda un saldo pendiente, se abrirá Mercado Pago.
+              Los importes del remito corresponden a los conceptos y pagos de tu cliente. Generar el remito cuesta {formatMoney(REMITO_GENERATION_FEE_ARS, "ARS")}; ese cargo es independiente y no modifica el documento.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 rounded-xl border border-border/60 bg-background/50 p-4">
@@ -1044,7 +1085,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               </Button>
             </div>
             {discountApplied && (
-              <p className="text-sm font-medium text-(--neon-cyan)">Descuento del 100% aplicado. El remito se generará sin costo.</p>
+              <p className="text-sm font-medium text-(--neon-cyan)">Código válido: se bonifica el costo de generación. Los importes del remito no cambian.</p>
             )}
           </div>
           <div className="space-y-4 rounded-xl border border-border/60 bg-background/50 p-4 text-sm">
@@ -1071,14 +1112,11 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               </table>
             </div>
             <div className="space-y-2 border-t border-border/50 pt-3 text-sm">
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal de conceptos</span><span>{formatMoney(totals.subtotal, form.currency)}</span></div>
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Ajuste a importe fijo</span><span>{fixedPriceAdjustment < 0 ? "−" : "+"}{formatMoney(Math.abs(fixedPriceAdjustment), form.currency)}</span></div>
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Total del remito</span><span>{formatMoney(FIXED_INVOICE_TOTAL, form.currency)}</span></div>
-              {discountApplied && (
-                <div className="flex items-center justify-between text-(--neon-cyan)"><span>Descuento (100%)</span><span>−{formatMoney(FIXED_INVOICE_TOTAL, form.currency)}</span></div>
-              )}
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada</span><span>{formatMoney(discountApplied ? 0 : cappedDeposit, form.currency)}</span></div>
-              <div className="flex items-center justify-between text-base font-semibold"><span>Saldo a abonar</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : amountDue, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatMoney(totals.subtotal, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada por tu cliente</span><span>{formatMoney(form.deposit, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Total del remito</span><span>{formatMoney(totals.total, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Saldo pendiente del cliente</span><span>{formatMoney(totals.balance, form.currency)}</span></div>
+              <div className="flex items-center justify-between border-t border-border/50 pt-2 font-semibold"><span>{discountApplied ? "Costo para generar" : "Costo de generación (ARS)"}</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : REMITO_GENERATION_FEE_ARS, "ARS")}</span></div>
             </div>
           </div>
           <DialogFooter className="gap-2">
@@ -1090,9 +1128,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 ? "Preparando…"
                 : discountApplied
                   ? "Confirmar y generar remito gratis"
-                  : amountDue > 0
-                    ? "Confirmar datos y pagar"
-                    : "Confirmar y guardar remito"}
+                  : `Pagar ${formatMoney(REMITO_GENERATION_FEE_ARS, "ARS")} y generar remito`}
             </Button>
           </DialogFooter>
         </DialogContent>
