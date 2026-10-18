@@ -134,7 +134,7 @@ function PapeleraPage() {
               </tbody>
             </table>
           </div>
-          <div className="divide-y divide-border/40 md:hidden">
+          <div className="divide-y divide-cyan-400/30 md:hidden">
             {entries.map((entry) => {
               const record = entry.records[0];
               const expiry = new Date(Date.parse(entry.deletedAt) + 5 * 24 * 60 * 60 * 1000);

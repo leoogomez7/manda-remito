@@ -258,7 +258,7 @@ function BorradoresPage() {
                       <>
                         <Button
                           size="icon"
-                          variant="secondary"
+                          variant="ghost"
                           onClick={() => handleEdit(draft)}
                           title="Modificar borrador"
                           aria-label={`Modificar borrador ${draft.number}`}

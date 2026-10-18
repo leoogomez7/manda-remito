@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Pencil, Plus, Search, Users, Save, X } from "lucide-react";
+import { Download, Eye, Pencil, Search, Users, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,7 +170,7 @@ function ClientesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Button size="icon" variant="secondary" aria-label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
-                          <Plus className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                       </td>
                       <td className="px-4 py-3">
@@ -184,7 +184,7 @@ function ClientesPage() {
               </tbody>
             </table>
           </div>
-          <div className="divide-y divide-border/40 md:hidden">
+          <div className="divide-y divide-cyan-400/30 md:hidden">
             {filteredClients.map((client, index) => {
               const relatedInvoices = invoicesForClient(client);
               const saved = savedClients.find((item) => sameClient(item.client, client));
@@ -209,11 +209,11 @@ function ClientesPage() {
                     </div>
                   </dl>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => setRemitosClient(client)}>
-                      <Plus className="mr-1 h-4 w-4" /> Ver remitos
+                    <Button size="icon" variant="ghost" title="Ver remitos" aria-label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
+                      <Eye className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => openEditClient(client)}>
-                      <Pencil className="mr-1 h-4 w-4" /> Editar
+                    <Button size="icon" variant="ghost" title="Editar cliente" aria-label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
+                      <Pencil className="h-4 w-4" />
                     </Button>
                   </div>
                 </article>

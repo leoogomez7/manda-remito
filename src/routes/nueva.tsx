@@ -703,7 +703,10 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
       </motion.div>
 
       <Dialog open={clientPickerOpen} onOpenChange={setClientPickerOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Seleccionar cliente</DialogTitle>
             <DialogDescription>Elige un cliente para completar automáticamente sus datos en el remito.</DialogDescription>
