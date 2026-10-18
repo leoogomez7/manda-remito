@@ -20,13 +20,17 @@ export const Route = createFileRoute("/mis-datos")({
 });
 
 function MisDatosPage() {
-  const { user } = useAppAuth();
+  const { user, isAuthenticated, login } = useAppAuth();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<BusinessProfile>(() => getBusinessProfile());
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      toast.error("Inicia sesión para consultar tus datos.");
+      return;
+    }
     setProfile(getBusinessProfile(user?.email));
-  }, [user?.email]);
+  }, [isAuthenticated, user?.email]);
 
   const update = (field: keyof BusinessProfile, value: string) => {
     setProfile((current) => ({ ...current, [field]: value }));
@@ -62,9 +66,25 @@ function MisDatosPage() {
   };
 
   const handleSave = () => {
+    if (!isAuthenticated) {
+      toast.error("Inicia sesión para guardar tus datos.");
+      return;
+    }
     saveBusinessProfile(profile, user?.email);
     toast.success("Mis datos se guardaron correctamente");
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className={cn(PAGE_CONTAINER_CLASS, "pl-8")}>
+        <section className="glass mx-auto max-w-lg rounded-2xl border border-destructive/30 p-6 text-center">
+          <h1 className="text-xl font-semibold">Inicia sesión para consultar tus datos</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Tus datos de empresa están asociados a tu cuenta.</p>
+          <Button className="mt-4" onClick={() => void login()}>Iniciar sesión</Button>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(PAGE_CONTAINER_CLASS, "pl-8")}>

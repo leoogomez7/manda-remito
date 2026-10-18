@@ -33,7 +33,7 @@ export const Route = createFileRoute("/clientes")({
 const currencies: Currency[] = ["ARS", "USD"];
 
 function ClientesPage() {
-  const { user } = useAppAuth();
+  const { user, isAuthenticated, login } = useAppAuth();
   const [savedClients, setSavedClients] = useState(() => getSavedClients(user?.email));
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [query, setQuery] = useState("");
@@ -43,9 +43,15 @@ function ClientesPage() {
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setSavedClients([]);
+      setInvoices([]);
+      toast.error("Inicia sesión para consultar tus clientes.");
+      return;
+    }
     setSavedClients(getSavedClients(user?.email));
     setInvoices(getInvoices());
-  }, [user?.email]);
+  }, [isAuthenticated, user?.email]);
 
   const clients = useMemo(
     () => mergeClientsWithInvoices(savedClients, invoices),
@@ -70,6 +76,10 @@ function ClientesPage() {
   };
   const handleSaveClient = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!isAuthenticated) {
+      toast.error("Inicia sesión para guardar clientes.");
+      return;
+    }
     const existingSaved = editingClient
       ? savedClients.find((item) => sameClient(item.client, editingClient))
       : undefined;
@@ -99,6 +109,18 @@ function ClientesPage() {
       toast.error(`No se pudo descargar ${invoice.number}`);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className={PAGE_CONTAINER_CLASS}>
+        <section className="glass mx-auto max-w-lg rounded-2xl border border-destructive/30 p-6 text-center">
+          <h1 className="text-xl font-semibold">Inicia sesión para consultar tus clientes</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Tu agenda y los remitos asociados están vinculados a tu cuenta.</p>
+          <Button className="mt-4" onClick={() => void login()}>Iniciar sesión</Button>
+        </section>
+      </div>
+    );
+  }
 
   const currencyTotals = (client: ClientData, field: "total" | "deposit") => {
     const list = invoicesForClient(client);
