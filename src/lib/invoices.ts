@@ -1,5 +1,6 @@
 import { BUSINESS } from "./business";
 import type { BusinessProfile } from "./business";
+import { allocateInvoiceNumber, queueCloudChange, scopedStorageKey } from "./cloud-sync";
 
 export type DocType = "factura" | "recibo";
 export type PaymentMethod = "credito" | "debito" | "transferencia" | "efectivo";
@@ -33,6 +34,7 @@ export interface Invoice {
   notes: string;
   issueDate: string;
   subtotal: number;
+  discount?: number;
   total: number;
   balance: number;
   status: "emitida" | "pendiente" | "borrador";
@@ -59,6 +61,14 @@ export interface TrashEntry {
 let _cachedInvoices: Invoice[] | null = null;
 let _cachedPendingRoot: Invoice[] | null = null;
 let _cachedPendingAll: Invoice[] | null = null;
+
+if (typeof window !== "undefined") {
+  window.addEventListener("mf:data-owner-changed", () => {
+    _cachedInvoices = null;
+    _cachedPendingRoot = null;
+    _cachedPendingAll = null;
+  });
+}
 
 export const PAYMENT_LABEL: Record<PaymentMethod, string> = {
   credito: "Tarjeta de Crédito",
@@ -102,26 +112,32 @@ function safeParse<T>(raw: string | null, fallback: T): T {
 export function getInvoices(): Invoice[] {
   if (typeof window === "undefined") return [];
   if (_cachedInvoices) return _cachedInvoices; // 💡 Retorna la misma referencia estable
-  _cachedInvoices = safeParse<Invoice[]>(localStorage.getItem(KEY_INVOICES), []);
+  _cachedInvoices = safeParse<Invoice[]>(localStorage.getItem(scopedStorageKey(KEY_INVOICES)), []);
   return _cachedInvoices;
 }
 
 export function saveInvoices(list: Invoice[]) {
+  const storageKey = scopedStorageKey(KEY_INVOICES);
+  const previous = _cachedInvoices ?? safeParse<Invoice[]>(localStorage.getItem(storageKey), []);
+  const previousById = new Map(previous.map((invoice) => [invoice.id, invoice]));
+  const nextIds = new Set(list.map((invoice) => invoice.id));
+  const records = list.filter((invoice) => JSON.stringify(previousById.get(invoice.id)) !== JSON.stringify(invoice));
+  const deleteIds = previous.filter((invoice) => !nextIds.has(invoice.id)).map((invoice) => invoice.id);
   _cachedInvoices = list;
   _cachedPendingRoot = null; // Invalidamos la caché al guardar
   _cachedPendingAll = null;
-  localStorage.setItem(KEY_INVOICES, JSON.stringify(list));
+  localStorage.setItem(storageKey, JSON.stringify(list));
+  if (records.length || deleteIds.length) {
+    void queueCloudChange({ collection: "invoices", records: records as unknown as Record<string, unknown>[], deleteIds });
+  }
 }
 
-export function nextNumber(): string {
-  const current = Number(localStorage.getItem(KEY_COUNTER) || "0");
-  const next = current + 1;
-  localStorage.setItem(KEY_COUNTER, String(next));
-  return `MF-${String(next).padStart(6, "0")}`;
+export async function nextNumber(): Promise<string> {
+  return allocateInvoiceNumber();
 }
 
 export function peekNextNumber(): string {
-  const current = Number(localStorage.getItem(KEY_COUNTER) || "0");
+  const current = Number(localStorage.getItem(scopedStorageKey(KEY_COUNTER)) || "0");
   return `MF-${String(current + 1).padStart(6, "0")}`;
 }
 
@@ -132,7 +148,7 @@ export function getNextSettlementNumber(invoice: Invoice): string {
   const prefix = `${rootInvoice.number}-`;
   const trashEntries = typeof window === "undefined"
     ? []
-    : safeParse<TrashEntry[]>(localStorage.getItem(KEY_TRASH), []).filter(
+    : safeParse<TrashEntry[]>(localStorage.getItem(scopedStorageKey(KEY_TRASH)), []).filter(
         (entry) =>
           entry.kind === "invoice" &&
           Number.isFinite(Date.parse(entry.deletedAt)) &&
@@ -304,12 +320,21 @@ export function settleInvoice(id: string, paymentAmount?: number) {
 
 export function getDrafts(): Invoice[] {
   if (typeof window === "undefined") return [];
-  return safeParse<Invoice[]>(localStorage.getItem(KEY_DRAFTS), []);
+  return safeParse<Invoice[]>(localStorage.getItem(scopedStorageKey(KEY_DRAFTS)), []);
 }
 
 export function saveDrafts(list: Invoice[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(KEY_DRAFTS, JSON.stringify(list));
+  const storageKey = scopedStorageKey(KEY_DRAFTS);
+  const previous = safeParse<Invoice[]>(localStorage.getItem(storageKey), []);
+  const previousById = new Map(previous.map((draft) => [draft.id, draft]));
+  const nextIds = new Set(list.map((draft) => draft.id));
+  const records = list.filter((draft) => JSON.stringify(previousById.get(draft.id)) !== JSON.stringify(draft));
+  const deleteIds = previous.filter((draft) => !nextIds.has(draft.id)).map((draft) => draft.id);
+  localStorage.setItem(storageKey, JSON.stringify(list));
+  if (records.length || deleteIds.length) {
+    void queueCloudChange({ collection: "drafts", records: records as unknown as Record<string, unknown>[], deleteIds });
+  }
 }
 
 export function addDraft(draft: Invoice) {
@@ -336,7 +361,7 @@ export function moveDraftToTrash(id: string) {
 
 export function getTrash(): TrashEntry[] {
   if (typeof window === "undefined") return [];
-  const entries = safeParse<TrashEntry[]>(localStorage.getItem(KEY_TRASH), []);
+  const entries = safeParse<TrashEntry[]>(localStorage.getItem(scopedStorageKey(KEY_TRASH)), []);
   const activeEntries = entries.filter((entry) => {
     const deletedAt = Date.parse(entry.deletedAt);
     return Number.isFinite(deletedAt) && Date.now() - deletedAt < TRASH_RETENTION_MS;
@@ -370,7 +395,16 @@ function addTrashEntry(entry: TrashEntry) {
 
 function saveTrash(entries: TrashEntry[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(KEY_TRASH, JSON.stringify(entries));
+  const storageKey = scopedStorageKey(KEY_TRASH);
+  const previous = safeParse<TrashEntry[]>(localStorage.getItem(storageKey), []);
+  const previousById = new Map(previous.map((entry) => [entry.id, entry]));
+  const nextIds = new Set(entries.map((entry) => entry.id));
+  const records = entries.filter((entry) => JSON.stringify(previousById.get(entry.id)) !== JSON.stringify(entry));
+  const deleteIds = previous.filter((entry) => !nextIds.has(entry.id)).map((entry) => entry.id);
+  localStorage.setItem(storageKey, JSON.stringify(entries));
+  if (records.length || deleteIds.length) {
+    void queueCloudChange({ collection: "trash", records: records as unknown as Record<string, unknown>[], deleteIds });
+  }
 }
 
 export function updateDraft(updated: Invoice) {
@@ -379,17 +413,24 @@ export function updateDraft(updated: Invoice) {
 
 export function saveDraft(data: unknown) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(KEY_DRAFT, JSON.stringify(data));
+  localStorage.setItem(scopedStorageKey(KEY_DRAFT), JSON.stringify(data));
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    void queueCloudChange({
+      collection: "working_drafts",
+      records: [{ id: "current", draft: data as Record<string, unknown> }],
+    });
+  }
 }
 
 export function loadDraft<T>(): T | null {
   if (typeof window === "undefined") return null;
-  return safeParse<T | null>(localStorage.getItem(KEY_DRAFT), null);
+  return safeParse<T | null>(localStorage.getItem(scopedStorageKey(KEY_DRAFT)), null);
 }
 
 export function clearDraft() {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(KEY_DRAFT);
+  localStorage.removeItem(scopedStorageKey(KEY_DRAFT));
+  void queueCloudChange({ collection: "working_drafts", deleteIds: ["current"] });
 }
 
 export { BUSINESS };

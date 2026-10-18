@@ -205,36 +205,45 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   const boxX = pageW - 280;
   const boxW = 240;
   doc.setFillColor("#0F1218");
-  doc.roundedRect(boxX, afterTableY, boxW, 122, 8, 8, "F");
+  const hasDiscount = (invoice.discount ?? 0) > 0;
+  const totalsBoxHeight = hasDiscount ? 142 : 122;
+  doc.roundedRect(boxX, afterTableY, boxW, totalsBoxHeight, 8, 8, "F");
   doc.setDrawColor(CYAN);
   doc.setLineWidth(0.6);
-  doc.roundedRect(boxX, afterTableY, boxW, 122, 8, 8, "S");
+  doc.roundedRect(boxX, afterTableY, boxW, totalsBoxHeight, 8, 8, "S");
 
   const labelX = boxX + 16;
   const valueX = boxX + boxW - 16;
   doc.setFontSize(10);
   doc.setTextColor(MUTED);
   doc.text("Subtotal", labelX, afterTableY + 24);
-  doc.text("Seña", labelX, afterTableY + 44);
-  doc.text("Debe", labelX, afterTableY + 106);
+  if (hasDiscount) doc.text("Descuento (100%)", labelX, afterTableY + 44);
+  doc.text("Seña", labelX, afterTableY + (hasDiscount ? 64 : 44));
+  doc.text("Debe", labelX, afterTableY + (hasDiscount ? 126 : 106));
 
   doc.setTextColor(LIGHT);
   doc.setFont("helvetica", "normal");
   doc.text(formatMoney(invoice.subtotal, invoice.currency), valueX, afterTableY + 24, { align: "right" });
-  doc.text(formatMoney(invoice.deposit, invoice.currency), valueX, afterTableY + 44, { align: "right" });
+  if (hasDiscount) {
+    doc.setTextColor(CYAN);
+    doc.text(`−${formatMoney(invoice.discount ?? 0, invoice.currency)}`, valueX, afterTableY + 44, { align: "right" });
+    doc.setTextColor(LIGHT);
+  }
+  doc.text(formatMoney(invoice.deposit, invoice.currency), valueX, afterTableY + (hasDiscount ? 64 : 44), { align: "right" });
 
   doc.setDrawColor(FUCHSIA);
-  doc.line(labelX, afterTableY + 58, valueX, afterTableY + 58);
+  const dividerY = afterTableY + (hasDiscount ? 78 : 58);
+  doc.line(labelX, dividerY, valueX, dividerY);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(CYAN);
-  doc.text("Total", labelX, afterTableY + 76);
-  doc.text(formatMoney(invoice.total, invoice.currency), valueX, afterTableY + 76, { align: "right" });
+  doc.text("Total", labelX, afterTableY + (hasDiscount ? 96 : 76));
+  doc.text(formatMoney(invoice.total, invoice.currency), valueX, afterTableY + (hasDiscount ? 96 : 76), { align: "right" });
 
   doc.setFontSize(11);
   doc.setTextColor(FUCHSIA);
-  doc.text(formatMoney(invoice.balance, invoice.currency), valueX, afterTableY + 106, { align: "right" });
+  doc.text(formatMoney(invoice.balance, invoice.currency), valueX, afterTableY + (hasDiscount ? 126 : 106), { align: "right" });
 
   // Notes
   if (invoice.notes?.trim()) {

@@ -6,7 +6,8 @@ type AuthContextValue = {
   configured: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
-  user: { givenName?: string; familyName?: string; email?: string } | null;
+  user: { id?: string; givenName?: string; familyName?: string; email?: string } | null;
+  getIdToken: () => Promise<string | undefined>;
   login: (email?: string) => void | Promise<void>;
   register: (email?: string) => void | Promise<void>;
   logout: () => void | Promise<void>;
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthContextValue>({
   isAuthenticated: false,
   isLoading: false,
   user: null,
+  getIdToken: async () => undefined,
   login: () => {
     window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER.");
   },
@@ -33,6 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: false,
       isLoading: false,
       user: null,
+      getIdToken: async () => undefined,
       login: () => window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER."),
       register: () => window.alert("La autenticación todavía no está configurada. Agregá DOMAIN_USER y AUTH_USER."),
       logout: () => undefined,
@@ -59,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 function KindeSession({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, user, login, register, logout } = useKindeAuth();
+  const { isAuthenticated, isLoading, user, login, register, logout, getIdToken } = useKindeAuth();
 
   const startAuth = async (
     action: typeof login | typeof register,
@@ -91,6 +94,7 @@ function KindeSession({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         user: user ?? null,
+        getIdToken,
         login: (email) => startAuth(login, email),
         register: () => {
           if (!AUTH_CONFIG.orgCode) {

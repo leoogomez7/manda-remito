@@ -1,3 +1,4 @@
+import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -14,6 +15,7 @@ import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sid
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAppAuth } from "@/lib/auth";
+import { bootstrapCloudData, clearCloudSession } from "@/lib/cloud-sync";
 
 function NotFoundComponent() {
   return (
@@ -37,7 +39,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   console.error(error);
   const router = useRouter();
 
@@ -131,20 +133,75 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full">
-            <AppSidebar />
-            <div className="flex flex-1 flex-col">
-              <AppHeader />
-              <main className="flex-1">
-                <Outlet />
-              </main>
+        <CloudDataBootstrap>
+          <SidebarProvider>
+            <div className="flex min-h-screen w-full">
+              <AppSidebar />
+              <div className="flex flex-1 flex-col">
+                <AppHeader />
+                <main className="flex-1">
+                  <Outlet />
+                </main>
+              </div>
             </div>
-          </div>
-          <Toaster theme="dark" position="top-right" richColors />
-        </SidebarProvider>
+            <Toaster theme="dark" position="top-right" richColors />
+          </SidebarProvider>
+        </CloudDataBootstrap>
       </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function CloudDataBootstrap({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isLoading, user, getIdToken } = useAppAuth();
+  const [readyFor, setReadyFor] = React.useState<string | null>(null);
+  const [error, setError] = React.useState("");
+  const [attempt, setAttempt] = React.useState(0);
+
+  React.useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) {
+      clearCloudSession();
+      setReadyFor("");
+      setError("");
+      return;
+    }
+    const email = user?.email?.trim().toLowerCase();
+    if (!email) {
+      setError("La sesión no contiene un correo de usuario para sincronizar los datos.");
+      return;
+    }
+
+    let cancelled = false;
+    setError("");
+    void bootstrapCloudData(email, getIdToken)
+      .then(() => { if (!cancelled) setReadyFor(email); })
+      .catch((reason: unknown) => {
+        console.error("No se pudieron cargar los datos de Turso", reason);
+        if (!cancelled) setError(reason instanceof Error ? reason.message : "No se pudieron cargar tus datos.");
+      });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isLoading, user?.email, getIdToken, attempt]);
+
+  const email = user?.email?.trim().toLowerCase() ?? "";
+  const ready = !isLoading && (!isAuthenticated ? readyFor === "" : Boolean(email) && readyFor === email);
+
+  if (ready) return <>{children}</>;
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="glass w-full max-w-md rounded-2xl p-6 text-center">
+        <p className="text-lg font-semibold">{error ? "No se pudieron sincronizar tus datos" : "Cargando tus datos"}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {error || "Conectando con tu cuenta para cargar remitos, clientes y borradores."}
+        </p>
+        {error && (
+          <button type="button" className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setAttempt((value) => value + 1)}>
+            Reintentar
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

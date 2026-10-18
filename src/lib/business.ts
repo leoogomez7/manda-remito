@@ -1,3 +1,5 @@
+import { queueCloudChange } from "@/lib/cloud-sync";
+
 export interface BusinessProfile {
   name: string;
   location: string;
@@ -50,5 +52,8 @@ export function getBusinessProfile(userEmail?: string): BusinessProfile {
 
 export function saveBusinessProfile(profile: BusinessProfile, userEmail?: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(profileStorageKey(userEmail), JSON.stringify(profile));
+  const normalizedEmail = userEmail?.trim().toLowerCase();
+  const value = { ...profile, ...(normalizedEmail ? { email: normalizedEmail } : {}) };
+  localStorage.setItem(profileStorageKey(userEmail), JSON.stringify(value));
+  void queueCloudChange({ collection: "business_profiles", value });
 }

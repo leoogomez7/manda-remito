@@ -9,7 +9,7 @@ type ProtectedLinkProps = ComponentProps<typeof Link>;
 export function ProtectedLink({ onClick, to, ...props }: ProtectedLinkProps) {
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     if (to === PROTECTED_PATH) {
-      const password = window.prompt("Ingrese la contraseña para crear un nuevo remito:");
+      const password = window.prompt("Ingrese la contraseña para generar un remito:");
       if (password !== PASSWORD) {
         event.preventDefault();
         window.alert("Contraseña incorrecta.");

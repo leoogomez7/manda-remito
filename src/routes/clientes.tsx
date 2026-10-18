@@ -69,7 +69,10 @@ function ClientesPage() {
   };
   const handleSaveClient = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const saved = saveClient(formClient, user?.email);
+    const existingSaved = editingClient
+      ? savedClients.find((item) => sameClient(item.client, editingClient))
+      : undefined;
+    const saved = saveClient(formClient, user?.email, existingSaved?.id);
     if (!saved) return;
     setSavedClients(getSavedClients(user?.email));
     if (editingClient) {

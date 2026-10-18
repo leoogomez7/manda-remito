@@ -31,7 +31,7 @@ const items = [
   { title: "Mis datos", url: "/mis-datos", icon: UserRound },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Menú principal", url: "/", icon: LayoutDashboard },
-  { title: "Nuevo remito", url: "/nueva", icon: FilePlus2 },
+  { title: "Generar remito", url: "/nueva", icon: FilePlus2 },
   { title: "Remitos borradores", url: "/borradores", icon: Archive },
   { title: "Remitos emitidos", url: "/historial", icon: FileCheck },
   { title: "Papelera", url: "/papelera", icon: Trash2 },

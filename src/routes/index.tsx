@@ -134,7 +134,7 @@ function Dashboard() {
         </div>
         <Button asChild size="lg" className="group">
           <Link to="/nueva">
-            Nuevo remito
+            Generar remito
             <ArrowUpRight className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </Button>

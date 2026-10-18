@@ -17,7 +17,7 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,6 +26,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -45,13 +46,14 @@ import {
   PAYMENT_LABEL,
   peekNextNumber,
   removeDraft,
-  settleInvoice,
+  saveDraft,
   type Currency,
   type Invoice,
   type LineItem,
   type PaymentMethod,
 } from "@/lib/invoices";
-import { BUSINESS, getBusinessProfile } from "@/lib/business";
+import { getBusinessProfile } from "@/lib/business";
+import { flushCloudChanges } from "@/lib/cloud-sync";
 import { useAppAuth } from "@/lib/auth";
 import { getSavedClients, mergeClientsWithInvoices } from "@/lib/clients";
 import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -63,8 +65,8 @@ export const Route = createFileRoute("/nueva")({
   component: NuevaFactura,
   head: () => ({
     meta: [
-      { title: "Nuevo remito" },
-      { name: "description", content: "Generá un nuevo remito o recibo profesional." },
+      { title: "Generar remito" },
+      { name: "description", content: "Generá un remito o recibo profesional." },
     ],
   }),
 });
@@ -109,7 +111,8 @@ const initial: FormState = {
 export function NuevaFactura() {
   const navigate = useNavigate();
   const { settleInvoiceId: requestedSettlementId } = Route.useSearch();
-  const { user } = useAppAuth();
+  const { user, getIdToken } = useAppAuth();
+  const workingDraftDirty = useRef(false);
   const [form, setForm] = useState<FormState>(() => {
     const draft = requestedSettlementId ? null : loadDraft<FormState>();
     const startingForm = draft || {
@@ -119,6 +122,12 @@ export function NuevaFactura() {
     return { ...startingForm, settleInvoiceId: requestedSettlementId ?? startingForm.settleInvoiceId };
   });
   const [generatedInvoice, setGeneratedInvoice] = useState<Invoice | null>(null);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [creatingPayment, setCreatingPayment] = useState(false);
+  const [validatingCode, setValidatingCode] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [discountApplied, setDiscountApplied] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   // const [nextNum, setNextNum] = useState("MF-000001");
   const [editingDraftId, setEditingDraftId] = useState<string | null>(() => {
     if (requestedSettlementId) return null;
@@ -141,43 +150,27 @@ export function NuevaFactura() {
       .some((value) => value.toLowerCase().includes(term));
   });
 
-  useEffect(() => {
-    // Dejalo vacío o borralo, la inicialización ya se hizo arriba de forma nativa.
-  }, []);
-
   const totals = useMemo(
     () => calcTotals(form.items, form.deposit),
     [form.items, form.deposit],
   );
 
+  useEffect(() => {
+    if (!workingDraftDirty.current) return;
+    const timeout = window.setTimeout(() => {
+      saveDraft({ ...form, ...(editingDraftId ? { draftId: editingDraftId } : {}) });
+    }, 500);
+    return () => window.clearTimeout(timeout);
+  }, [form, editingDraftId]);
+
   const resetForm = () => {
+    workingDraftDirty.current = false;
     setForm({
       ...initial,
       issueDate: new Date().toISOString().slice(0, 10),
     });
     setEditingDraftId(null);
     setNextNum(peekNextNumber());
-  };
-
-  const sendInvoiceNotifications = (invoice: Invoice) => {
-    const subject = `Remito ${invoice.number} - ${BUSINESS.brand}`;
-    const body = `Hola ${invoice.client.name || "cliente"},\n\nAdjunto se encuentra el remito ${invoice.number}. Total: ${formatMoney(invoice.total, invoice.currency)}.\n\nGracias por tu confianza.\n${BUSINESS.brand}`;
-    
-    if (invoice.client.email) {
-      const params = new URLSearchParams({ subject, body });
-      if (invoice.businessProfile?.email) params.set("cc", invoice.businessProfile.email);
-      const mailto = `mailto:${encodeURIComponent(invoice.client.email)}?${params.toString()}`;
-      window.open(mailto, "_blank");
-    }
-
-    const phone = invoice.client.phone?.replace(/\D/g, "");
-    if (phone) {
-      const message = `Hola ${invoice.client.name || "cliente"}, te envío el remito ${invoice.number}. Total: ${formatMoney(
-        invoice.total,
-        invoice.currency,
-      )}.`;
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank");
-    }
   };
 
   const selectedPendingInvoice = pendingInvoices.find((invoice) => invoice.id === form.settleInvoiceId);
@@ -211,30 +204,23 @@ export function NuevaFactura() {
   }, [selectedPendingInvoice?.id]);
 
 
-  const generateInvoice = async () => {
-    const num = selectedPendingInvoice
-      ? getNextSettlementNumber(selectedPendingInvoice)
-      : nextNumber();
-    const rawPayment = Number(form.deposit) || 0;
+  const generateInvoice = async (applyDiscount: boolean) => {
+    let num: string;
+    try {
+      num = selectedPendingInvoice
+        ? getNextSettlementNumber(selectedPendingInvoice)
+        : await nextNumber();
+    } catch (error) {
+      console.error("No se pudo reservar un número de remito en Turso", error);
+      toast.error(error instanceof Error ? error.message : "No se pudo conectar con la base de datos. Intentá nuevamente.");
+      return;
+    }
+    const discount = applyDiscount ? totals.total : 0;
+    const total = Math.max(0, totals.total - discount);
+    const rawPayment = applyDiscount ? 0 : Number(form.deposit) || 0;
     const payment = selectedPendingInvoice
       ? Math.min(rawPayment, selectedPendingInvoice.balance)
       : rawPayment;
-    let updatedOriginal: Invoice | null = null;
-
-    if (selectedPendingInvoice) {
-      const updatedBalance = Math.max(0, selectedPendingInvoice.balance - payment);
-      updatedOriginal = {
-        ...selectedPendingInvoice,
-        deposit: selectedPendingInvoice.deposit + payment,
-        balance: updatedBalance,
-        status: updatedBalance > 0 ? "pendiente" : "emitida",
-        notes: `${selectedPendingInvoice.notes ? `${selectedPendingInvoice.notes} | ` : ""}Pago ${formatMoney(
-          payment,
-          selectedPendingInvoice.currency,
-        )}`,
-      };
-    }
-
     const invoice: Invoice = {
       id: crypto.randomUUID(),
       number: num,
@@ -250,22 +236,61 @@ export function NuevaFactura() {
       notes: selectedPendingInvoice && !form.notes ? `Pago de ${selectedPendingInvoice.number}` : form.notes,
       businessProfile: getBusinessProfile(user?.email),
       subtotal: totals.subtotal,
-      total: totals.total,
-      balance: totals.balance,
-      status: updatedOriginal ? updatedOriginal.status : totals.balance > 0 ? "pendiente" : "emitida",
+      ...(discount > 0 ? { discount } : {}),
+      total,
+      balance: Math.max(0, total - payment),
+      status: total - payment > 0 ? "pendiente" : "emitida",
       settlesInvoiceId: selectedPendingInvoice?.id,
     };
+
+    let checkoutUrl: string | null = null;
+    if (invoice.balance > 0) {
+      try {
+        const token = await getIdToken();
+        if (!token) throw new Error("No se pudo validar tu sesión para iniciar el pago.");
+        const response = await fetch("/api/create-payment-preference", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ number: invoice.number, amount: invoice.balance, currency: invoice.currency }),
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({})) as { paymentUrl?: string; error?: string };
+        if (!response.ok || !result.paymentUrl) {
+          throw new Error(result.error || "No se pudo crear el enlace de pago de Mercado Pago.");
+        }
+        checkoutUrl = result.paymentUrl;
+      } catch (error) {
+        console.error("No se pudo iniciar el pago con Mercado Pago", error);
+        toast.error(error instanceof Error ? error.message : "No se pudo iniciar el pago.");
+        return;
+      }
+    }
 
     if (editingDraftId) {
       removeDraft(editingDraftId);
       setEditingDraftId(null);
     }
 
-    if (updatedOriginal && payment > 0) {
-      settleInvoice(updatedOriginal.id, payment);
-    }
-
+    workingDraftDirty.current = false;
     addInvoice(invoice);
+    clearDraft();
+    setGeneratedInvoice(invoice);
+    setPaymentUrl(checkoutUrl);
+    setDiscountCode("");
+    setDiscountApplied(false);
+    setConfirmationOpen(false);
+    resetForm();
+
+    try {
+      await flushCloudChanges();
+    } catch (error) {
+      console.error("El remito quedó en cola y no se confirmó su sincronización antes del pago", error);
+      toast.error("El remito quedó guardado en este dispositivo, pero no pudimos confirmar su sincronización. Reintenta antes de continuar al pago.");
+      return;
+    }
 
     try {
       // OPTIMIZACIÓN: Carga diferida dinámica del generador de PDF
@@ -281,10 +306,7 @@ export function NuevaFactura() {
       });
     }
 
-    sendInvoiceNotifications(invoice);
-    clearDraft();
-    setGeneratedInvoice(invoice);
-    resetForm();
+    if (checkoutUrl) window.location.assign(checkoutUrl);
   };
 
   const handleGenerateClick = () => {
@@ -298,10 +320,86 @@ export function NuevaFactura() {
       return;
     }
 
-    void generateInvoice();
+    setConfirmationOpen(true);
+  };
+
+  const confirmAndPay = async () => {
+    setCreatingPayment(true);
+    try {
+      let applyDiscount = false;
+      if (discountCode.trim()) {
+        const token = await getIdToken();
+        if (!token) throw new Error("No se pudo validar tu sesión para verificar el código.");
+        const response = await fetch("/api/validate-discount-code", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code: discountCode.trim() }),
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({})) as { valid?: boolean; error?: string };
+        if (!response.ok || !result.valid) {
+          throw new Error(result.error || "El código ingresado no es válido.");
+        }
+        applyDiscount = true;
+      }
+      await generateInvoice(applyDiscount);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo verificar el código.");
+    } finally {
+      setCreatingPayment(false);
+    }
+  };
+
+  const applyDiscountCode = async () => {
+    const code = discountCode.trim();
+    if (!code) {
+      setDiscountApplied(false);
+      return;
+    }
+
+    setValidatingCode(true);
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("No se pudo validar tu sesión para verificar el código.");
+      const response = await fetch("/api/validate-discount-code", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({})) as { valid?: boolean; error?: string };
+      if (!response.ok || !result.valid) {
+        setDiscountApplied(false);
+        throw new Error(result.error || "El código ingresado no es válido.");
+      }
+      setDiscountApplied(true);
+      toast.success("Código aplicado: 100% de descuento");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo verificar el código.");
+    } finally {
+      setValidatingCode(false);
+    }
+  };
+
+  const continueToPayment = async () => {
+    if (!paymentUrl) return;
+    try {
+      await flushCloudChanges();
+      window.location.assign(paymentUrl);
+    } catch (error) {
+      console.error("No se pudo sincronizar el remito antes de abrir el pago", error);
+      toast.error("No se pudo sincronizar el remito. Verifica tu conexión e intenta otra vez.");
+    }
   };
 
   const saveDraftDocument = () => {
+    workingDraftDirty.current = false;
     if (form.draftId) {
       removeDraft(form.draftId);
     }
@@ -334,14 +432,17 @@ export function NuevaFactura() {
   };
 
 const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    workingDraftDirty.current = true;
     setForm((s) => (s[key] === value ? s : { ...s, [key]: value }));
   };
 
   const updateClient = (patch: Partial<FormState["client"]>) => {
+    workingDraftDirty.current = true;
     setForm((s) => ({ ...s, client: { ...s.client, ...patch } }));
   };
 
   const updateItem = (id: string, patch: Partial<LineItem>) => {
+    workingDraftDirty.current = true;
     setForm((s) => {
       const updatedItems = s.items.map((it) => 
         it.id === id ? { ...it, ...patch } : it
@@ -350,14 +451,18 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     });
   };
 
-  const addItem = () =>
+  const addItem = () => {
+    workingDraftDirty.current = true;
     setForm((s) => ({ ...s, items: [...s.items, emptyItem()] }));
+  };
 
-  const removeItem = (id: string) =>
+  const removeItem = (id: string) => {
+    workingDraftDirty.current = true;
     setForm((s) => ({
       ...s,
       items: s.items.length > 1 ? s.items.filter((it) => it.id !== id) : s.items,
     }));
+  }
 
   // VISTA CONDICIONAL: Factura recién generada con éxito
   if (generatedInvoice) {
@@ -408,11 +513,17 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 type="button"
                 onClick={() => {
                   setGeneratedInvoice(null);
+                  setPaymentUrl(null);
                   navigate({ to: "/nueva" });
                 }}
               >
-                <FilePlus2 className="mr-2 h-4 w-4" /> Generar nuevo remito
+                <FilePlus2 className="mr-2 h-4 w-4" /> Generar otro remito
               </Button>
+              {paymentUrl && (
+                <Button type="button" onClick={() => void continueToPayment()}>
+                  <Send className="mr-2 h-4 w-4" /> Continuar al pago
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="secondary"
@@ -464,6 +575,12 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   <span>Subtotal</span>
                   <span>{formatMoney(generatedInvoice.subtotal, generatedInvoice.currency)}</span>
                 </div>
+                {(generatedInvoice.discount ?? 0) > 0 && (
+                  <div className="flex justify-between text-(--neon-cyan)">
+                    <span>Descuento (100%)</span>
+                    <span>−{formatMoney(generatedInvoice.discount ?? 0, generatedInvoice.currency)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span>Seña</span>
                   <span>{formatMoney(generatedInvoice.deposit, generatedInvoice.currency)}</span>
@@ -657,7 +774,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           {/* SECCIÓN: SALDAR CUENTA */}
           <Section
             title="Saldar cuenta"
-            subtitle="Selecciona un remito pendiente para marcar como pagado cuando generes este remito"
+            subtitle="Asocia este remito con una cuenta pendiente para identificar el pago"
           >
             <div className="grid gap-4">
               <Field label="Remito pendiente">
@@ -685,8 +802,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                     Monto pendiente: {formatMoney(selectedPendingInvoice.balance, selectedPendingInvoice.currency)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    El nuevo remito se genera por separado y actualiza el saldo del remito original.
-                    Si pagás parcialmente, el remito original seguirá pendiente con su saldo actualizado.
+                    El remito se genera por separado. El saldo original no se actualiza automáticamente con el pago de Mercado Pago.
                   </p>
                 </div>
               ) : form.settleInvoiceId ? (
@@ -859,7 +975,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 className="w-full .bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black hover:opacity-90"
                 onClick={handleGenerateClick}
               >
-                <Send className="mr-2 h-4 w-4" /> Nuevo remito
+                <Send className="mr-2 h-4 w-4" /> Generar remito
               </Button>
 
               <Button
@@ -882,6 +998,90 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           </div>
         </aside>
       </div>
+
+      <Dialog open={confirmationOpen} onOpenChange={(open) => !creatingPayment && setConfirmationOpen(open)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Confirma los datos del remito</DialogTitle>
+            <DialogDescription>
+              Revisa el cliente, los conceptos y el total. Al confirmar, se guardará el remito y, si queda un saldo pendiente, se abrirá Mercado Pago.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 rounded-xl border border-border/60 bg-background/50 p-4">
+            <Label htmlFor="discount-code">Ingresar código</Label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                id="discount-code"
+                value={discountCode}
+                onChange={(event) => {
+                  setDiscountCode(event.target.value);
+                  setDiscountApplied(false);
+                }}
+                placeholder="Código promocional"
+                autoComplete="off"
+                disabled={creatingPayment}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={validatingCode || creatingPayment || !discountCode.trim()}
+                onClick={() => void applyDiscountCode()}
+              >
+                {validatingCode ? "Verificando…" : discountApplied ? "Código aplicado" : "Aplicar código"}
+              </Button>
+            </div>
+            {discountApplied && (
+              <p className="text-sm font-medium text-(--neon-cyan)">Descuento del 100% aplicado. El remito se generará sin costo.</p>
+            )}
+          </div>
+          <div className="space-y-4 rounded-xl border border-border/60 bg-background/50 p-4 text-sm">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <p><span className="text-muted-foreground">Cliente:</span> {form.client.name || "—"}</p>
+              <p><span className="text-muted-foreground">CUIT:</span> {form.client.cuit || "—"}</p>
+              <p><span className="text-muted-foreground">Correo:</span> {form.client.email || "—"}</p>
+              <p><span className="text-muted-foreground">Fecha:</span> {form.issueDate}</p>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-border/50">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-card/60 text-xs uppercase text-muted-foreground">
+                  <tr><th className="px-3 py-2">Concepto</th><th className="px-3 py-2 text-right">Cant.</th><th className="px-3 py-2 text-right">Importe</th></tr>
+                </thead>
+                <tbody>
+                  {form.items.map((item) => (
+                    <tr key={item.id} className="border-t border-border/40">
+                      <td className="px-3 py-2">{item.description || "Sin descripción"}</td>
+                      <td className="px-3 py-2 text-right">{item.quantity}</td>
+                      <td className="px-3 py-2 text-right">{formatMoney(item.quantity * item.unitPrice, form.currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="space-y-2 border-t border-border/50 pt-3 text-sm">
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Total</span><span>{formatMoney(totals.total, form.currency)}</span></div>
+              {discountApplied && (
+                <div className="flex items-center justify-between text-(--neon-cyan)"><span>Descuento (100%)</span><span>−{formatMoney(totals.total, form.currency)}</span></div>
+              )}
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada</span><span>{formatMoney(form.deposit, form.currency)}</span></div>
+              <div className="flex items-center justify-between text-base font-semibold"><span>Saldo a abonar</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : totals.balance, form.currency)}</span></div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="secondary" disabled={creatingPayment} onClick={() => setConfirmationOpen(false)}>
+              Seguir editando
+            </Button>
+            <Button type="button" disabled={creatingPayment} onClick={() => void confirmAndPay()}>
+              {creatingPayment
+                ? "Preparando…"
+                : discountApplied
+                  ? "Confirmar y generar remito gratis"
+                  : totals.balance > 0
+                    ? "Confirmar datos y pagar"
+                    : "Confirmar y guardar remito"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

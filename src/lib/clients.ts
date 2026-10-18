@@ -1,4 +1,5 @@
 import type { Invoice } from "@/lib/invoices";
+import { queueCloudChange } from "@/lib/cloud-sync";
 
 export type ClientData = Invoice["client"];
 
@@ -40,6 +41,7 @@ export function saveClient(client: ClientData, userEmail?: string, id?: string) 
     ? clients.map((item) => item.id === existing.id ? savedClient : item)
     : [savedClient, ...clients];
   localStorage.setItem(clientsStorageKey(userEmail), JSON.stringify(updated));
+  void queueCloudChange({ collection: "clients", records: [savedClient as unknown as Record<string, unknown>] });
   return savedClient;
 }
 
