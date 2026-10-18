@@ -1114,9 +1114,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             <div className="space-y-2 border-t border-border/50 pt-3 text-sm">
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatMoney(totals.subtotal, form.currency)}</span></div>
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada por tu cliente</span><span>{formatMoney(form.deposit, form.currency)}</span></div>
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Total del remito</span><span>{formatMoney(totals.total, form.currency)}</span></div>
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Saldo pendiente del cliente</span><span>{formatMoney(totals.balance, form.currency)}</span></div>
-              <div className="flex items-center justify-between border-t border-border/50 pt-2 font-semibold"><span>{discountApplied ? "Costo para generar" : "Costo de generación (ARS)"}</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : REMITO_GENERATION_FEE_ARS, "ARS")}</span></div>
+              <div className="flex items-center justify-between border-t border-border/50 pt-2 font-semibold"><span>{discountApplied ? "Costo para generar" : "Monto a pagar por remito"}</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : REMITO_GENERATION_FEE_ARS, "ARS")}</span></div>
             </div>
           </div>
           <DialogFooter className="gap-2">
