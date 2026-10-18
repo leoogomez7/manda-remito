@@ -15,7 +15,7 @@ import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sid
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAppAuth } from "@/lib/auth";
-import { bootstrapCloudData, clearCloudSession } from "@/lib/cloud-sync";
+import { bootstrapCloudData, clearCloudSession, loadCachedCloudSnapshot } from "@/lib/cloud-sync";
 
 function NotFoundComponent() {
   return (
@@ -174,12 +174,19 @@ function CloudDataBootstrap({ children }: { children: React.ReactNode }) {
 
     let cancelled = false;
     setError("");
-    void bootstrapCloudData(email, getIdToken)
-      .then(() => { if (!cancelled) setReadyFor(email); })
-      .catch((reason: unknown) => {
+    void (async () => {
+      const hasCache = await loadCachedCloudSnapshot(email);
+      if (cancelled) return;
+      if (hasCache) setReadyFor(email);
+
+      try {
+        await bootstrapCloudData(email, getIdToken);
+        if (!cancelled) setReadyFor(email);
+      } catch (reason) {
         console.error("No se pudieron cargar los datos de Turso", reason);
         if (!cancelled) setError(reason instanceof Error ? reason.message : "No se pudieron cargar tus datos.");
-      });
+      }
+    })();
     return () => { cancelled = true; };
   }, [isAuthenticated, isLoading, user?.email, getIdToken, attempt]);
 

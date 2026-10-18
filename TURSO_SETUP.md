@@ -30,7 +30,7 @@ The confirmation modal shows the remito totals separately from the ARS 2,000 gen
 
 ## 3. First login and data migration
 
-Sign in to the deployed app. The first authenticated load creates the Turso tables, imports this browser's existing invoices, drafts, trash entries, clients, profile, working draft, and queued changes that are not already in the cloud, then removes the migrated app data from localStorage. Turso is the persistent source of truth; the browser only holds an in-memory snapshot during the active session. Subsequent signed-in devices load the same account's Turso data. Saved drafts in `/borradores` and edits opened into `/nueva` are both synchronized.
+Sign in to the deployed app. The first authenticated load creates the Turso tables, imports this browser's existing invoices, drafts, trash entries, clients, profile, working draft, and queued changes that are not already in the cloud, then removes the migrated app data from localStorage. Turso is the source of truth. For faster subsequent startup, the app keeps a per-account read snapshot in IndexedDB; it displays that snapshot immediately and revalidates against Turso in the background. All persistent writes still go to Turso. Subsequent signed-in devices load the same account's data. Saved drafts in `/borradores` and edits opened into `/nueva` are synchronized.
 
 While the account is being synchronized, the app displays a loading state. If configuration or network access fails, it shows an error and a retry button rather than silently showing another account's local cache.
 
@@ -38,6 +38,6 @@ While the account is being synchronized, the app displays a loading state. If co
 
 All database reads and writes go through `api/data.ts` (the project must be deployed on Vercel, where this file runs as a serverless API function). It verifies Kinde's signature, issuer and client audience server-side, then scopes every SQL statement to the verified token subject. SQL values are parameterized. The Turso auth token must only be configured as a server environment secret. Local Vite preview alone does not provide `/api/data` or connect to Turso.
 
-The app requires connectivity to Turso to persist changes. Pending writes are kept in memory and retried while the session remains open; do not close/reload the app until a save confirms synchronization. Verify the initial connection on each device.
+The app requires connectivity to Turso to persist changes. Pending writes are kept in memory and retried while the session remains open; do not close/reload the app until a save confirms synchronization. The IndexedDB snapshot is only a startup optimization and can be refreshed from Turso on each device.
 
 Sequential `MF-000001` invoice numbers are allocated atomically by Turso per account. Lettered settlement receipts (`MF-000001-A`, `...-B`) remain attached to their parent number.

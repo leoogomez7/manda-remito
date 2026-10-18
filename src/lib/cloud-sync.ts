@@ -24,6 +24,70 @@ const queueFlushes = new Map<string, Promise<void>>();
 const pendingMemory = new Map<string, PendingCloudChange[]>();
 let cloudSnapshot: CloudSnapshot | null = null;
 let cloudProfile: Record<string, unknown> | null = null;
+const CLOUD_CACHE_DB = "manda-remito-cloud-cache";
+const CLOUD_CACHE_STORE = "snapshots";
+
+function openCloudCache(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(CLOUD_CACHE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(CLOUD_CACHE_STORE)) {
+        request.result.createObjectStore(CLOUD_CACHE_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("No se pudo abrir la caché local."));
+  });
+}
+
+async function readCloudCache(userEmail: string): Promise<CloudSnapshot | null> {
+  if (typeof indexedDB === "undefined") return null;
+  const database = await openCloudCache();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(CLOUD_CACHE_STORE, "readonly");
+    const request = transaction.objectStore(CLOUD_CACHE_STORE).get(userEmail.trim().toLowerCase());
+    request.onsuccess = () => resolve(request.result ? request.result as CloudSnapshot : null);
+    request.onerror = () => reject(request.error ?? new Error("No se pudo leer la caché local."));
+    transaction.oncomplete = () => database.close();
+    transaction.onerror = () => database.close();
+  });
+}
+
+async function persistCloudCache(userEmail = dataOwnerEmail) {
+  if (typeof indexedDB === "undefined" || !userEmail || !cloudSnapshot) return;
+  try {
+    const database = await openCloudCache();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(CLOUD_CACHE_STORE, "readwrite");
+      transaction.objectStore(CLOUD_CACHE_STORE).put(
+        { ...cloudSnapshot, business_profiles: cloudProfile },
+        userEmail.trim().toLowerCase(),
+      );
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error("No se pudo guardar la caché."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("Se canceló el guardado de caché."));
+    });
+    database.close();
+  } catch (error) {
+    // Cache persistence is an optimization only; database writes remain authoritative.
+    console.warn("No se pudo actualizar la caché local de Turso", error);
+  }
+}
+
+export async function loadCachedCloudSnapshot(userEmail: string): Promise<boolean> {
+  setDataOwner(userEmail);
+  try {
+    const cached = await readCloudCache(userEmail);
+    if (!cached) return false;
+    cloudSnapshot = { ...emptySnapshot(), ...cached };
+    cloudProfile = cached.business_profiles ?? null;
+    window.dispatchEvent(new Event("mf:cloud-data-ready"));
+    return true;
+  } catch (error) {
+    console.warn("No se pudo leer la caché local; se cargarán los datos directamente de Turso", error);
+    return false;
+  }
+}
 
 export function scopedStorageKey(key: string, userEmail = dataOwnerEmail) {
   const owner = userEmail?.trim().toLowerCase() || "anonymous";
@@ -119,6 +183,7 @@ async function flushPendingQueue(owner = dataOwnerEmail, getToken = tokenGetter)
       if (completedIndex >= 0) currentPending.splice(completedIndex, 1);
       writePending(currentPending, owner);
     }
+    await persistCloudCache(owner);
   })();
   queueFlushes.set(owner, activeFlushPromise);
   try {
@@ -284,6 +349,7 @@ export async function bootstrapCloudData(userEmail: string, getIdToken: TokenGet
   cloudSnapshot = { ...emptySnapshot(), ...data };
   cloudProfile = data.business_profiles ?? null;
   pendingMemory.set(pendingQueueKey(userEmail), []);
+  await persistCloudCache(userEmail);
   removeLegacyLocalData(userEmail);
   window.dispatchEvent(new Event("mf:cloud-data-ready"));
 }
