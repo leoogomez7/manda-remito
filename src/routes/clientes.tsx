@@ -139,7 +139,7 @@ function ClientesPage() {
         </div>
       ) : (
         <div className="glass border-gradient overflow-hidden rounded-2xl">
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-250 text-center text-sm">
               <thead className="bg-background/40">
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -183,6 +183,42 @@ function ClientesPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="divide-y divide-border/40 md:hidden">
+            {filteredClients.map((client, index) => {
+              const relatedInvoices = invoicesForClient(client);
+              const saved = savedClients.find((item) => sameClient(item.client, client));
+              return (
+                <article key={saved?.id ?? `${client.name}-${client.email}-${index}`} className="min-w-0 space-y-3 p-4">
+                  <div className="min-w-0">
+                    <h2 className="wrap-break-word font-semibold">{client.name || "Cliente sin nombre"}</h2>
+                    <p className="break-all text-xs text-muted-foreground">{client.email || client.phone || "Sin contacto"}</p>
+                  </div>
+                  <dl className="grid grid-cols-2 gap-3 rounded-xl border border-border/50 bg-background/30 p-3 text-sm">
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Remitos</dt>
+                      <dd className="font-medium tabular-nums">{relatedInvoices.length}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-muted-foreground">Total señado</dt>
+                      <dd className="font-medium tabular-nums"><MoneyTotals values={currencyTotals(client, "deposit")} /></dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-xs text-muted-foreground">Total de remitos</dt>
+                      <dd className="font-semibold tabular-nums"><MoneyTotals values={currencyTotals(client, "total")} /></dd>
+                    </div>
+                  </dl>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => setRemitosClient(client)}>
+                      <Plus className="mr-1 h-4 w-4" /> Ver remitos
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => openEditClient(client)}>
+                      <Pencil className="mr-1 h-4 w-4" /> Editar
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       )}

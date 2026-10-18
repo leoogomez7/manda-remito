@@ -137,9 +137,9 @@ function RootComponent() {
           <SidebarProvider>
             <div className="flex min-h-screen w-full">
               <AppSidebar />
-              <div className="flex flex-1 flex-col">
+              <div className="flex min-w-0 flex-1 flex-col">
                 <AppHeader />
-                <main className="flex-1">
+                <main className="min-w-0 flex-1">
                   <Outlet />
                 </main>
               </div>

@@ -41,6 +41,14 @@ function PapeleraPage() {
 
   useEffect(() => {
     refreshEntries();
+    window.addEventListener("mf:cloud-data-ready", refreshEntries);
+    window.addEventListener("storage", refreshEntries);
+    window.addEventListener("focus", refreshEntries);
+    return () => {
+      window.removeEventListener("mf:cloud-data-ready", refreshEntries);
+      window.removeEventListener("storage", refreshEntries);
+      window.removeEventListener("focus", refreshEntries);
+    };
   }, []);
      const handleRestore = (entry: TrashEntry) => {
     restoreTrashEntry(entry.id);
@@ -73,7 +81,7 @@ function PapeleraPage() {
         </div>
       ) : (
         <div className="glass border-gradient overflow-hidden rounded-2xl">
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-190 text-center text-sm">
               <thead className="bg-background/40">
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -125,6 +133,44 @@ function PapeleraPage() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="divide-y divide-border/40 md:hidden">
+            {entries.map((entry) => {
+              const record = entry.records[0];
+              const expiry = new Date(Date.parse(entry.deletedAt) + 5 * 24 * 60 * 60 * 1000);
+              const daysLeft = Math.max(1, Math.ceil((expiry.getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
+              return (
+                <article key={entry.id} className="min-w-0 space-y-3 p-4">
+                  <div className="flex min-w-0 items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-all font-mono text-sm text-(--neon-cyan)">{record.number}</p>
+                      <h2 className="wrap-break-word font-semibold">{record.client.name || "—"}</h2>
+                      <p className="wrap-break-word text-xs text-muted-foreground">
+                        {record.issueDate
+                          ? new Date(`${record.issueDate}T00:00:00`).toLocaleDateString("es-AR")
+                          : new Date(record.createdAt).toLocaleDateString("es-AR")} · {PAYMENT_LABEL[record.paymentMethod]}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-semibold tabular-nums">{formatMoney(record.total, record.currency)}</p>
+                      <p className="text-xs text-muted-foreground">Seña: {formatMoney(record.deposit, record.currency)}</p>
+                    </div>
+                  </div>
+                  <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CalendarClock className="h-4 w-4 shrink-0" />
+                    Se elimina {expiry.toLocaleDateString("es-AR")} · {daysLeft} día{daysLeft === 1 ? "" : "s"}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="secondary" onClick={() => handleRestore(entry)}>
+                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Restaurar
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setEntryToDelete(entry.id)}>
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
+                    </Button>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       )}

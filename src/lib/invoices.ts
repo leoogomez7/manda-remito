@@ -193,10 +193,10 @@ export function removeInvoice(id: string) {
   saveInvoices(removeInvoiceRecord(id, invoices));
 }
 
-export function moveInvoiceToTrash(id: string) {
+export function moveInvoiceToTrash(id: string): boolean {
   const invoices = getInvoices();
   const invoice = invoices.find((item) => item.id === id);
-  if (!invoice) return;
+  if (!invoice) return false;
 
   addTrashEntry({
     id: crypto.randomUUID(),
@@ -205,6 +205,7 @@ export function moveInvoiceToTrash(id: string) {
     records: [invoice],
   });
   saveInvoices(removeInvoiceRecord(id, invoices));
+  return true;
 }
 
 function removeInvoiceRecord(id: string, invoices: Invoice[]): Invoice[] {

@@ -152,8 +152,8 @@ function BorradoresPage() {
       ) : (
         <div className="space-y-4">
           <div className="glass border-gradient overflow-hidden rounded-2xl">
-            <div className="overflow-x-auto md:overflow-visible">
-            <table className="hidden min-w-full text-center text-sm md:table">
+            <div>
+            <table className="hidden w-full text-center text-sm md:table">
               <thead className="bg-background/40">
                 <tr className="text-xs uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3">Número</th>
@@ -222,12 +222,12 @@ function BorradoresPage() {
 
             <div className="divide-y divide-border/40 md:hidden">
               {filtered.map((draft) => (
-                <div key={draft.id} className="p-4 text-center">
-                  <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <div key={draft.id} className="min-w-0 p-4">
+                  <div className="flex min-w-0 flex-col gap-3">
                     <div>
-                      <p className="font-mono text-sm text-color:var(--neon-cyan)">{draft.number}</p>
-                      <p className="mt-1 font-semibold">{draft.client.name || "—"}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="break-all font-mono text-sm text-color:var(--neon-cyan)">{draft.number}</p>
+                      <p className="mt-1 wrap-break-word font-semibold">{draft.client.name || "—"}</p>
+                      <p className="wrap-break-word text-xs text-muted-foreground">
                         {new Date(draft.createdAt).toLocaleDateString("es-AR")} · {PAYMENT_LABEL[draft.paymentMethod]}
                       </p>
                     </div>
@@ -240,7 +240,7 @@ function BorradoresPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                  <div className="mt-3 flex flex-wrap justify-start gap-2">
                     {!isSampleDraft(draft) ? (
                       <>
                         <Button

@@ -26,6 +26,7 @@ import {
   moveInvoiceToTrash,
   type Invoice,
 } from "@/lib/invoices";
+import { flushCloudChanges } from "@/lib/cloud-sync";
 
 const sampleHistorialInvoices: Invoice[] = [
   {
@@ -114,6 +115,7 @@ function HistorialPage() {
   const [list, setList] = useState<Invoice[]>([]);
   const [q, setQ] = useState("");
   const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
+  const [movingToTrash, setMovingToTrash] = useState(false);
 
   useEffect(() => {
     setList([...sampleHistorialInvoices, ...getInvoices()]);
@@ -135,12 +137,27 @@ function HistorialPage() {
     setInvoiceToDelete(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!invoiceToDelete) return;
-    moveInvoiceToTrash(invoiceToDelete);
+    setMovingToTrash(true);
+    const moved = moveInvoiceToTrash(invoiceToDelete);
+    if (!moved) {
+      setMovingToTrash(false);
+      setInvoiceToDelete(null);
+      toast.error("No se encontró el remito. Actualiza el historial e intenta otra vez.");
+      return;
+    }
     setList([...sampleHistorialInvoices, ...getInvoices()]);
     setInvoiceToDelete(null);
     toast.success("Remito movido a la papelera");
+    try {
+      await flushCloudChanges();
+    } catch (error) {
+      console.error("El remito se movió localmente, pero no se sincronizó la papelera", error);
+      toast.error("El remito está en la papelera de este dispositivo, pero no se pudo sincronizar con la nube.");
+    } finally {
+      setMovingToTrash(false);
+    }
   };
 
   const handleSettleAccount = (invoice: Invoice) => {
@@ -327,14 +344,14 @@ function HistorialPage() {
           {/* Mobile cards */}
           <div className="divide-y divide-border/40 md:hidden">
             {filtered.map((i) => (
-              <div key={i.id} className="p-4 text-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div>
-                    <p className="font-mono text-sm text-color:var(--neon-cyan)">
+              <div key={i.id} className="min-w-0 p-4">
+                <div className="flex min-w-0 flex-col gap-3">
+                  <div className="min-w-0">
+                    <p className="break-all font-mono text-sm text-color:var(--neon-cyan)">
                       {i.number}
                     </p>
-                    <p className="mt-0.5 font-semibold">{i.client.name || "—"}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="mt-0.5 break-words font-semibold">{i.client.name || "—"}</p>
+                    <p className="break-words text-xs text-muted-foreground">
                       {new Date(i.createdAt).toLocaleDateString("es-AR")} ·{" "}
                       {PAYMENT_LABEL[i.paymentMethod]}
                     </p>
@@ -351,7 +368,7 @@ function HistorialPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 flex justify-center gap-2">
+                <div className="mt-3 flex flex-wrap justify-start gap-2">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -399,7 +416,7 @@ function HistorialPage() {
         </div>
       )}
 
-      <Dialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+      <Dialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && !movingToTrash && setInvoiceToDelete(null)}>
         <DialogContent className="border-border/70 bg-background">
           <DialogHeader>
             <DialogTitle>Enviar remito a la papelera</DialogTitle>
@@ -409,10 +426,10 @@ function HistorialPage() {
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Cancelar</Button>
+              <Button type="button" variant="outline" disabled={movingToTrash}>Cancelar</Button>
             </DialogClose>
-            <Button onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Mover a papelera
+            <Button type="button" disabled={movingToTrash} onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {movingToTrash ? "Moviendo…" : "Mover a papelera"}
             </Button>
           </DialogFooter>
         </DialogContent>
