@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { CalendarClock, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { IconActionButton } from "@/components/icon-action-button";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import {
   AlertDialog,
@@ -120,12 +121,12 @@ function PapeleraPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
-                          <Button size="sm" variant="secondary" onClick={() => handleRestore(entry)}>
-                            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Restaurar
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setEntryToDelete(entry.id)} aria-label={`Eliminar ${record.number} definitivamente`}>
+                          <IconActionButton label={`Restaurar ${record.number}`} tone="success" onClick={() => handleRestore(entry)}>
+                            <RotateCcw className="h-4 w-4" />
+                          </IconActionButton>
+                          <IconActionButton label={`Eliminar ${record.number} definitivamente`} tone="danger" onClick={() => setEntryToDelete(entry.id)}>
                             <Trash2 className="h-4 w-4" />
-                          </Button>
+                          </IconActionButton>
                         </div>
                       </td>
                     </tr>
@@ -161,12 +162,12 @@ function PapeleraPage() {
                     Se elimina {expiry.toLocaleDateString("es-AR")} · {daysLeft} día{daysLeft === 1 ? "" : "s"}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" variant="secondary" onClick={() => handleRestore(entry)}>
-                      <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Restaurar
-                    </Button>
-                    <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setEntryToDelete(entry.id)}>
-                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Eliminar
-                    </Button>
+                    <IconActionButton label={`Restaurar ${record.number}`} tone="success" onClick={() => handleRestore(entry)}>
+                      <RotateCcw className="h-4 w-4" />
+                    </IconActionButton>
+                    <IconActionButton label={`Eliminar ${record.number} definitivamente`} tone="danger" onClick={() => setEntryToDelete(entry.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
                   </div>
                 </article>
               );

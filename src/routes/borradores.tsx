@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Archive, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconActionButton } from "@/components/icon-action-button";
 import { Input } from "@/components/ui/input";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import { toast } from "sonner";
@@ -202,24 +203,12 @@ function BorradoresPage() {
                       <div className="flex items-center justify-center gap-2">
                         {!isSampleDraft(draft) ? (
                           <>
-                            <Button
-                              size="icon"
-                              variant="secondary"
-                              onClick={() => handleEdit(draft)}
-                              title="Modificar borrador"
-                              aria-label={`Modificar borrador ${draft.number}`}
-                            >
+                            <IconActionButton label={`Modificar borrador ${draft.number}`} onClick={() => void handleEdit(draft)}>
                               <Pencil className="h-4 w-4" />
-                            </Button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(draft.id)}
-                              className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-                              title="Eliminar borrador"
-                              aria-label={`Eliminar borrador ${draft.number}`}
-                            >
+                            </IconActionButton>
+                            <IconActionButton label={`Eliminar borrador ${draft.number}`} tone="danger" onClick={() => handleDelete(draft.id)}>
                               <Trash2 className="h-4 w-4" />
-                            </button>
+                            </IconActionButton>
                           </>
                         ) : (
                           <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
@@ -256,25 +245,12 @@ function BorradoresPage() {
                   <div className="mt-3 flex flex-wrap justify-start gap-2">
                     {!isSampleDraft(draft) ? (
                       <>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleEdit(draft)}
-                          title="Modificar borrador"
-                          aria-label={`Modificar borrador ${draft.number}`}
-                        >
+                        <IconActionButton label={`Modificar borrador ${draft.number}`} onClick={() => void handleEdit(draft)}>
                           <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleDelete(draft.id)}
-                          className="text-destructive hover:text-destructive"
-                          title="Eliminar borrador"
-                          aria-label={`Eliminar borrador ${draft.number}`}
-                        >
+                        </IconActionButton>
+                        <IconActionButton label={`Eliminar borrador ${draft.number}`} tone="danger" onClick={() => handleDelete(draft.id)}>
                           <Trash2 className="h-4 w-4" />
-                        </Button>
+                        </IconActionButton>
                       </>
                     ) : (
                       <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">

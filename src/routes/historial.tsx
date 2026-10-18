@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BadgeCheck, Download, FileText, Printer, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { IconActionButton } from "@/components/icon-action-button";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import { toast } from "sonner";
 import { useAppAuth } from "@/lib/auth";
@@ -367,53 +367,31 @@ function HistorialPage() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap justify-start gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    type="button"
-                    title="Descargar PDF"
-                    aria-label={`Descargar PDF de ${i.number}`}
-                    onClick={() => handleDownloadPDF(i)}
-                  >
+                  <IconActionButton label={`Descargar PDF de ${i.number}`} onClick={() => handleDownloadPDF(i)}>
                     <Download className="h-4 w-4" />
-                  </Button>
+                  </IconActionButton>
 
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Imprimir"
-                    aria-label={`Imprimir ${i.number}`}
-                    onClick={() => handlePrintPDF(i)}
-                  >
+                  <IconActionButton label={`Imprimir ${i.number}`} onClick={() => handlePrintPDF(i)}>
                     <Printer className="h-4 w-4" />
-                  </Button>
+                  </IconActionButton>
 
                   {(() => {
                     const { settled, root } = accountState(i);
                     return (
-                      <Button
-                        size="icon"
-                        variant="ghost"
+                      <IconActionButton
+                        label={settled ? `Cuenta saldada ${i.number}` : `Saldar cuenta ${i.number}`}
+                        tone="success"
                         disabled={settled}
-                        title={settled ? "Cuenta saldada" : "Saldar cuenta"}
-                        aria-label={settled ? `Cuenta saldada ${i.number}` : `Saldar cuenta ${i.number}`}
                         onClick={() => handleSettleAccount(root)}
                       >
                         <BadgeCheck className="h-4 w-4" />
-                      </Button>
+                      </IconActionButton>
                     );
                   })()}
 
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    title="Enviar a papelera"
-                    aria-label={`Enviar ${i.number} a papelera`}
-                    onClick={() => handleDelete(i.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
+                  <IconActionButton label={`Enviar ${i.number} a papelera`} tone="danger" onClick={() => handleDelete(i.id)}>
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </IconActionButton>
                 </div>
               </div>
             ))}
@@ -475,27 +453,14 @@ function IconBtn({
   disabled?: boolean;
 }) {
   return (
-    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span tabIndex={disabled ? 0 : undefined} className="inline-flex">
-            <button
-              type="button"
-              onClick={onClick}
-              aria-label={title}
-              disabled={disabled}
-              className={`rounded-md p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                danger
-                  ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  : "text-muted-foreground hover:bg-accent/10 hover:text-foreground"
-              }`}
-            >
-              {children}
-            </button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={6}>{title}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <IconActionButton
+      label={title}
+      tone={danger ? "danger" : title.includes("Saldar cuenta") ? "success" : "neutral"}
+      onClick={onClick}
+      disabled={disabled}
+      className="h-8 w-8 p-1.5"
+    >
+      {children}
+    </IconActionButton>
   );
 }

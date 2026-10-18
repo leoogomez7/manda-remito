@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Download, Eye, Pencil, Plus, Search, Users, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { IconActionButton } from "@/components/icon-action-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -147,8 +148,7 @@ function ClientesPage() {
                   <th className="px-4 py-3">Cantidad de remitos</th>
                   <th className="px-4 py-3">Total señado</th>
                   <th className="px-4 py-3">Total</th>
-                  <th className="px-4 py-3">Ver</th>
-                  <th className="px-4 py-3">Editar</th>
+                  <th className="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -169,14 +169,14 @@ function ClientesPage() {
                         <MoneyTotals values={currencyTotals(client, "total")} />
                       </td>
                       <td className="px-4 py-3">
-                        <Button size="icon" variant="secondary" aria-label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button size="icon" variant="secondary" aria-label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        <div className="flex justify-center gap-1">
+                          <IconActionButton label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
+                            <Eye className="h-4 w-4" />
+                          </IconActionButton>
+                          <IconActionButton label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
+                            <Pencil className="h-4 w-4" />
+                          </IconActionButton>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -209,12 +209,12 @@ function ClientesPage() {
                     </div>
                   </dl>
                   <div className="flex flex-wrap gap-2">
-                    <Button size="icon" variant="ghost" title="Ver remitos" aria-label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
+                    <IconActionButton label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
                       <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button size="icon" variant="ghost" title="Editar cliente" aria-label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
+                    </IconActionButton>
+                    <IconActionButton label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
                       <Pencil className="h-4 w-4" />
-                    </Button>
+                    </IconActionButton>
                   </div>
                 </article>
               );
