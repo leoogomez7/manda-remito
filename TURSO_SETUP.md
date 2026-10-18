@@ -24,7 +24,7 @@ To create a Mercado Pago payment link after the remito is confirmed, add these V
 - `MERCADOPAGO_ACCESS_TOKEN` — secret access token; it is only read by `/api/create-payment-preference` and must never use a `VITE_` prefix.
 - `MERCADOPAGO_PUBLIC_KEY` — public key retained for client-side Mercado Pago SDK/Brick integrations. The current Checkout Pro redirect does not need to expose or use it.
 - `APP_URL` — optional canonical HTTPS origin used for Mercado Pago return URLs. If omitted, the API uses the request origin.
-- `CODE` — optional server-only promotional code. Entering this code in the remito confirmation modal applies a 100% discount, saves the remito, and skips Mercado Pago. Do not add a `VITE_` prefix.
+- `GRATIS2026` — server-only value of the promotional code that grants a 100% discount. Enter the same value in the remito confirmation modal to save the remito without Mercado Pago. Do not add a `VITE_` prefix.
 
 The confirmation modal lets the user return to editing or confirm and proceed to checkout. The API authenticates the Kinde user and creates a preference through Mercado Pago; the browser only receives the checkout URL. Configure live or test credentials consistently. The current integration redirects to Mercado Pago but does not yet process payment webhooks or automatically mark remitos as paid when Mercado Pago confirms a payment.
 

@@ -58,9 +58,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return response.status(400).json({ error: "Ingresa un código válido." });
   }
 
-  const configuredCode = process.env.CODE?.trim();
+  const configuredCode = process.env.GRATIS2026?.trim();
   if (!configuredCode) {
-    return response.status(503).json({ error: "El código promocional no está configurado en este deployment." });
+    return response.status(503).json({ error: "La variable de entorno GRATIS2026 no está configurada en este deployment." });
   }
 
   const valid = providedCode.toUpperCase() === configuredCode.toUpperCase();

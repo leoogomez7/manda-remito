@@ -204,9 +204,27 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   const afterTableY: number = doc.lastAutoTable.finalY + 20;
   const boxX = pageW - 280;
   const boxW = 240;
-  doc.setFillColor("#0F1218");
   const hasDiscount = (invoice.discount ?? 0) > 0;
-  const totalsBoxHeight = hasDiscount ? 142 : 122;
+  const detailRows: Array<{ label: string; value: string; color?: string }> = [
+    { label: "Subtotal", value: formatMoney(invoice.subtotal, invoice.currency) },
+    ...((invoice.priceAdjustment ?? 0) !== 0
+      ? [{
+          label: "Ajuste importe fijo",
+          value: `${(invoice.priceAdjustment ?? 0) < 0 ? "−" : "+"}${formatMoney(Math.abs(invoice.priceAdjustment ?? 0), invoice.currency)}`,
+        }]
+      : []),
+    ...(hasDiscount
+      ? [{ label: "Descuento (100%)", value: `−${formatMoney(invoice.discount ?? 0, invoice.currency)}`, color: CYAN }]
+      : []),
+    { label: "Seña", value: formatMoney(invoice.deposit, invoice.currency) },
+  ];
+  const detailStartY = 22;
+  const rowSpacing = 18;
+  const dividerY = detailStartY + detailRows.length * rowSpacing;
+  const totalY = dividerY + 18;
+  const balanceY = totalY + 27;
+  const totalsBoxHeight = balanceY + 14;
+  doc.setFillColor("#0F1218");
   doc.roundedRect(boxX, afterTableY, boxW, totalsBoxHeight, 8, 8, "F");
   doc.setDrawColor(CYAN);
   doc.setLineWidth(0.6);
@@ -215,39 +233,32 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
   const labelX = boxX + 16;
   const valueX = boxX + boxW - 16;
   doc.setFontSize(10);
-  doc.setTextColor(MUTED);
-  doc.text("Subtotal", labelX, afterTableY + 24);
-  if (hasDiscount) doc.text("Descuento (100%)", labelX, afterTableY + 44);
-  doc.text("Seña", labelX, afterTableY + (hasDiscount ? 64 : 44));
-  doc.text("Debe", labelX, afterTableY + (hasDiscount ? 126 : 106));
-
-  doc.setTextColor(LIGHT);
   doc.setFont("helvetica", "normal");
-  doc.text(formatMoney(invoice.subtotal, invoice.currency), valueX, afterTableY + 24, { align: "right" });
-  if (hasDiscount) {
-    doc.setTextColor(CYAN);
-    doc.text(`−${formatMoney(invoice.discount ?? 0, invoice.currency)}`, valueX, afterTableY + 44, { align: "right" });
-    doc.setTextColor(LIGHT);
-  }
-  doc.text(formatMoney(invoice.deposit, invoice.currency), valueX, afterTableY + (hasDiscount ? 64 : 44), { align: "right" });
+  detailRows.forEach((row, index) => {
+    const y = afterTableY + detailStartY + index * rowSpacing;
+    doc.setTextColor(row.color ?? MUTED);
+    doc.text(row.label, labelX, y);
+    doc.setTextColor(row.color ?? LIGHT);
+    doc.text(row.value, valueX, y, { align: "right" });
+  });
 
   doc.setDrawColor(FUCHSIA);
-  const dividerY = afterTableY + (hasDiscount ? 78 : 58);
-  doc.line(labelX, dividerY, valueX, dividerY);
+  doc.line(labelX, afterTableY + dividerY, valueX, afterTableY + dividerY);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
   doc.setTextColor(CYAN);
-  doc.text("Total", labelX, afterTableY + (hasDiscount ? 96 : 76));
-  doc.text(formatMoney(invoice.total, invoice.currency), valueX, afterTableY + (hasDiscount ? 96 : 76), { align: "right" });
+  doc.text("Total", labelX, afterTableY + totalY);
+  doc.text(formatMoney(invoice.total, invoice.currency), valueX, afterTableY + totalY, { align: "right" });
 
   doc.setFontSize(11);
   doc.setTextColor(FUCHSIA);
-  doc.text(formatMoney(invoice.balance, invoice.currency), valueX, afterTableY + (hasDiscount ? 126 : 106), { align: "right" });
+  doc.text("Debe", labelX, afterTableY + balanceY);
+  doc.text(formatMoney(invoice.balance, invoice.currency), valueX, afterTableY + balanceY, { align: "right" });
 
   // Notes
   if (invoice.notes?.trim()) {
-    const notesY = afterTableY + 140;
+    const notesY = afterTableY + totalsBoxHeight + 18;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
     doc.setTextColor(DARK);

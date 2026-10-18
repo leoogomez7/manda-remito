@@ -86,6 +86,8 @@ type FormState = {
   items: LineItem[];
 };
 
+const FIXED_INVOICE_TOTAL = 2000;
+
 const emptyItem = (): LineItem => ({
   id: crypto.randomUUID(),
   quantity: 0,
@@ -154,6 +156,9 @@ export function NuevaFactura() {
     () => calcTotals(form.items, form.deposit),
     [form.items, form.deposit],
   );
+  const fixedPriceAdjustment = FIXED_INVOICE_TOTAL - totals.subtotal;
+  const cappedDeposit = Math.min(Number(form.deposit) || 0, FIXED_INVOICE_TOTAL);
+  const amountDue = Math.max(0, FIXED_INVOICE_TOTAL - cappedDeposit);
 
   useEffect(() => {
     if (!workingDraftDirty.current) return;
@@ -215,12 +220,12 @@ export function NuevaFactura() {
       toast.error(error instanceof Error ? error.message : "No se pudo conectar con la base de datos. Intentá nuevamente.");
       return;
     }
-    const discount = applyDiscount ? totals.total : 0;
-    const total = Math.max(0, totals.total - discount);
+    const discount = applyDiscount ? FIXED_INVOICE_TOTAL : 0;
+    const total = applyDiscount ? 0 : FIXED_INVOICE_TOTAL;
     const rawPayment = applyDiscount ? 0 : Number(form.deposit) || 0;
     const payment = selectedPendingInvoice
-      ? Math.min(rawPayment, selectedPendingInvoice.balance)
-      : rawPayment;
+      ? Math.min(rawPayment, FIXED_INVOICE_TOTAL, selectedPendingInvoice.balance)
+      : Math.min(rawPayment, FIXED_INVOICE_TOTAL);
     const invoice: Invoice = {
       id: crypto.randomUUID(),
       number: num,
@@ -236,6 +241,7 @@ export function NuevaFactura() {
       notes: selectedPendingInvoice && !form.notes ? `Pago de ${selectedPendingInvoice.number}` : form.notes,
       businessProfile: getBusinessProfile(user?.email),
       subtotal: totals.subtotal,
+      ...(fixedPriceAdjustment !== 0 ? { priceAdjustment: fixedPriceAdjustment } : {}),
       ...(discount > 0 ? { discount } : {}),
       total,
       balance: Math.max(0, total - payment),
@@ -575,6 +581,12 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                   <span>Subtotal</span>
                   <span>{formatMoney(generatedInvoice.subtotal, generatedInvoice.currency)}</span>
                 </div>
+                {(generatedInvoice.priceAdjustment ?? 0) !== 0 && (
+                  <div className="flex justify-between">
+                    <span>Ajuste al importe fijo</span>
+                    <span>{(generatedInvoice.priceAdjustment ?? 0) < 0 ? "−" : "+"}{formatMoney(Math.abs(generatedInvoice.priceAdjustment ?? 0), generatedInvoice.currency)}</span>
+                  </div>
+                )}
                 {(generatedInvoice.discount ?? 0) > 0 && (
                   <div className="flex justify-between text-(--neon-cyan)">
                     <span>Descuento (100%)</span>
@@ -895,9 +907,10 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 <Input
                   type="number"
                   min={0}
+                  max={FIXED_INVOICE_TOTAL}
                   step="0.01"
                   value={form.deposit}
-                  onChange={(e) => update("deposit", Number(e.target.value))}
+                  onChange={(e) => update("deposit", Math.min(Number(e.target.value) || 0, FIXED_INVOICE_TOTAL))}
                 />
               </Field>
               <Field label="Moneda">
@@ -959,8 +972,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <Row label="Subtotal" value={formatMoney(totals.subtotal, form.currency)} />
               <Row label="Seña" value={formatMoney(form.deposit, form.currency)} muted />
               <div className="my-3 h-px .bg-gradient-to-r from-transparent via-(--neon-cyan)/40 to-transparent" />
-              <Row label="Total" value={formatMoney(totals.total, form.currency)} bold accent="cyan" />
-              <Row label="Debe" value={formatMoney(totals.balance, form.currency)} bold accent="fuchsia" />
+              <Row label="Total del remito" value={formatMoney(FIXED_INVOICE_TOTAL, form.currency)} bold accent="cyan" />
+              <Row label="Debe" value={formatMoney(amountDue, form.currency)} bold accent="fuchsia" />
             </dl>
 
             <div className="mt-5 space-y-2 text-xs text-muted-foreground">
@@ -1058,12 +1071,14 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               </table>
             </div>
             <div className="space-y-2 border-t border-border/50 pt-3 text-sm">
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Total</span><span>{formatMoney(totals.total, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal de conceptos</span><span>{formatMoney(totals.subtotal, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Ajuste a importe fijo</span><span>{fixedPriceAdjustment < 0 ? "−" : "+"}{formatMoney(Math.abs(fixedPriceAdjustment), form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Total del remito</span><span>{formatMoney(FIXED_INVOICE_TOTAL, form.currency)}</span></div>
               {discountApplied && (
-                <div className="flex items-center justify-between text-(--neon-cyan)"><span>Descuento (100%)</span><span>−{formatMoney(totals.total, form.currency)}</span></div>
+                <div className="flex items-center justify-between text-(--neon-cyan)"><span>Descuento (100%)</span><span>−{formatMoney(FIXED_INVOICE_TOTAL, form.currency)}</span></div>
               )}
-              <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada</span><span>{formatMoney(form.deposit, form.currency)}</span></div>
-              <div className="flex items-center justify-between text-base font-semibold"><span>Saldo a abonar</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : totals.balance, form.currency)}</span></div>
+              <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada</span><span>{formatMoney(discountApplied ? 0 : cappedDeposit, form.currency)}</span></div>
+              <div className="flex items-center justify-between text-base font-semibold"><span>Saldo a abonar</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : amountDue, form.currency)}</span></div>
             </div>
           </div>
           <DialogFooter className="gap-2">
@@ -1075,7 +1090,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 ? "Preparando…"
                 : discountApplied
                   ? "Confirmar y generar remito gratis"
-                  : totals.balance > 0
+                  : amountDue > 0
                     ? "Confirmar datos y pagar"
                     : "Confirmar y guardar remito"}
             </Button>

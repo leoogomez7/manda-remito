@@ -34,6 +34,7 @@ export interface Invoice {
   notes: string;
   issueDate: string;
   subtotal: number;
+  priceAdjustment?: number;
   discount?: number;
   total: number;
   balance: number;
