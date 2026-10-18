@@ -206,7 +206,7 @@ function BorradoresPage() {
                             <IconActionButton label="Modificar" onClick={() => void handleEdit(draft)}>
                               <Pencil className="h-4 w-4" />
                             </IconActionButton>
-                            <IconActionButton label="Eliminar borrador" tone="danger" onClick={() => handleDelete(draft.id)}>
+                            <IconActionButton label="Eliminar" tone="danger" onClick={() => handleDelete(draft.id)}>
                               <Trash2 className="h-4 w-4" />
                             </IconActionButton>
                           </>
@@ -248,7 +248,7 @@ function BorradoresPage() {
                         <IconActionButton label="Modificar" onClick={() => void handleEdit(draft)}>
                           <Pencil className="h-4 w-4" />
                         </IconActionButton>
-                        <IconActionButton label="Eliminar borrador" tone="danger" onClick={() => handleDelete(draft.id)}>
+                        <IconActionButton label="Eliminar" tone="danger" onClick={() => handleDelete(draft.id)}>
                           <Trash2 className="h-4 w-4" />
                         </IconActionButton>
                       </>
