@@ -4,6 +4,8 @@ import { Archive, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
+import { toast } from "sonner";
+import { flushCloudChanges } from "@/lib/cloud-sync";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,7 +75,7 @@ function BorradoresPage() {
     setDrafts([sampleDraft, ...getDrafts()]);
   }, []);
 
-  const handleEdit = (draft: Invoice) => {
+  const handleEdit = async (draft: Invoice) => {
     if (isSampleDraft(draft)) return;
 
     saveDraft({
@@ -89,6 +91,13 @@ function BorradoresPage() {
       deposit: draft.deposit,
       notes: draft.notes,
     });
+    try {
+      await flushCloudChanges();
+    } catch (error) {
+      console.error("No se pudo sincronizar el borrador antes de abrirlo", error);
+      toast.error("No se pudo sincronizar el borrador. Comprueba la conexión e intenta otra vez.");
+      return;
+    }
     navigate({ to: "/nueva" });
   };
 

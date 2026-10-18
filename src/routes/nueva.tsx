@@ -53,7 +53,7 @@ import {
   type PaymentMethod,
 } from "@/lib/invoices";
 import { getBusinessProfile } from "@/lib/business";
-import { flushCloudChanges, scopedStorageKey } from "@/lib/cloud-sync";
+import { flushCloudChanges, getCloudRecord, queueCloudChange } from "@/lib/cloud-sync";
 import { useAppAuth } from "@/lib/auth";
 import { getSavedClients, mergeClientsWithInvoices } from "@/lib/clients";
 import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -142,7 +142,7 @@ export function NuevaFactura() {
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
 
-  // OPTIMIZACIÓN: useMemo evita leer el localStorage en cada renderizado
+  // Snapshot de datos sincronizados desde Turso al iniciar sesión.
   const pendingInvoices = useMemo(() => getPendingInvoices(true), []);
   const knownClients = useMemo(
     () => mergeClientsWithInvoices(getSavedClients(user?.email), getInvoices()),
@@ -261,9 +261,9 @@ export function NuevaFactura() {
         if (!response.ok || !result.paymentUrl) {
           throw new Error(result.error || "No se pudo crear el enlace de pago de Mercado Pago.");
         }
-        const pendingKey = scopedStorageKey("mf:pending-remito-checkout", user?.email);
-        localStorage.setItem(pendingKey, JSON.stringify(invoice));
+        queueCloudChange({ collection: "pending_checkouts", records: [{ id: invoice.number, invoice: invoice as unknown as Record<string, unknown> }] });
         saveDraft({ ...form, ...(editingDraftId ? { draftId: editingDraftId } : {}) });
+        await flushCloudChanges();
         setConfirmationOpen(false);
         window.location.assign(result.paymentUrl);
         return;
@@ -397,12 +397,6 @@ export function NuevaFactura() {
     const completePaidGeneration = async () => {
       setCreatingPayment(true);
       try {
-        const pendingKey = scopedStorageKey("mf:pending-remito-checkout", user.email);
-        const pendingInvoice = JSON.parse(localStorage.getItem(pendingKey) || "null") as Invoice | null;
-        if (!pendingInvoice?.number || !pendingInvoice.id) {
-          throw new Error("No se encontró el remito pendiente de pago en este dispositivo.");
-        }
-
         const token = await getIdToken();
         if (!token) throw new Error("No se pudo validar tu sesión para confirmar el pago.");
         const response = await fetch("/api/verify-remito-payment", {
@@ -411,16 +405,20 @@ export function NuevaFactura() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ paymentId, number: pendingInvoice.number }),
+          body: JSON.stringify({ paymentId }),
           cache: "no-store",
         });
-        const result = await response.json().catch(() => ({})) as { approved?: boolean; error?: string };
+        const result = await response.json().catch(() => ({})) as { approved?: boolean; number?: string; error?: string };
         if (!response.ok || !result.approved) {
           throw new Error(result.error || "Mercado Pago todavía no confirmó el pago. El remito no se generó.");
         }
+        const pendingInvoice = getCloudRecord("pending_checkouts", result.number ?? "")?.invoice as Invoice | undefined;
+        if (!pendingInvoice?.number || !pendingInvoice.id) {
+          throw new Error("No se encontró en la base de datos el remito asociado al pago aprobado.");
+        }
 
         addInvoice(pendingInvoice);
-        localStorage.removeItem(pendingKey);
+        queueCloudChange({ collection: "pending_checkouts", deleteIds: [pendingInvoice.number] });
         if (editingDraftId) removeDraft(editingDraftId);
         setEditingDraftId(null);
         clearDraft();
@@ -464,12 +462,7 @@ export function NuevaFactura() {
     void navigate({ to: "/nueva", replace: true });
   }, [paymentResult, navigate]);
 
-  const saveDraftDocument = () => {
-    workingDraftDirty.current = false;
-    if (form.draftId) {
-      removeDraft(form.draftId);
-    }
-
+  const saveDraftDocument = async () => {
     const draft: Invoice = {
       id: form.draftId ?? crypto.randomUUID(),
       number: form.draftNumber ?? `BOR-${String(Date.now()).slice(-6)}`,
@@ -492,6 +485,16 @@ export function NuevaFactura() {
 
     addDraft(draft);
     clearDraft();
+    setEditingDraftId(draft.id);
+    setForm((current) => ({ ...current, draftId: draft.id }));
+    try {
+      await flushCloudChanges();
+    } catch (error) {
+      console.error("No se pudo guardar el borrador en Turso", error);
+      toast.error("No se pudo sincronizar el borrador. Mantuvimos los datos abiertos; intenta guardarlo otra vez con conexión.");
+      return;
+    }
+    workingDraftDirty.current = false;
     setEditingDraftId(null);
     toast.success("Borrador guardado");
     resetForm();

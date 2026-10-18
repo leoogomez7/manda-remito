@@ -30,7 +30,7 @@ The confirmation modal shows the remito totals separately from the ARS 2,000 gen
 
 ## 3. First login and data migration
 
-Sign in to the deployed app. The first authenticated load creates the Turso tables, copies this browser's existing invoices, drafts, trash entries, clients, profile, and in-progress draft to the signed-in account when no cloud copy exists, and then loads the cloud copy. Keep the original device/browser data until migration has completed successfully. Subsequent signed-in devices load the same account's Turso data. Saved drafts in `/borradores` and edits opened into `/nueva` are both synchronized.
+Sign in to the deployed app. The first authenticated load creates the Turso tables, imports this browser's existing invoices, drafts, trash entries, clients, profile, working draft, and queued changes that are not already in the cloud, then removes the migrated app data from localStorage. Turso is the persistent source of truth; the browser only holds an in-memory snapshot during the active session. Subsequent signed-in devices load the same account's Turso data. Saved drafts in `/borradores` and edits opened into `/nueva` are both synchronized.
 
 While the account is being synchronized, the app displays a loading state. If configuration or network access fails, it shows an error and a retry button rather than silently showing another account's local cache.
 
@@ -38,6 +38,6 @@ While the account is being synchronized, the app displays a loading state. If co
 
 All database reads and writes go through `api/data.ts` (the project must be deployed on Vercel, where this file runs as a serverless API function). It verifies Kinde's signature, issuer and client audience server-side, then scopes every SQL statement to the verified token subject. SQL values are parameterized. The Turso auth token must only be configured as a server environment secret. Local Vite preview alone does not provide `/api/data` or connect to Turso.
 
-The current local cache remains for fast loading and offline continuity; pending edits are queued in that browser and retried on the next authenticated startup. A browser cache is not a substitute for a successful cloud sync, so verify the initial connection on the deployed app.
+The app requires connectivity to Turso to persist changes. Pending writes are kept in memory and retried while the session remains open; do not close/reload the app until a save confirms synchronization. Verify the initial connection on each device.
 
 Sequential `MF-000001` invoice numbers are allocated atomically by Turso per account. Lettered settlement receipts (`MF-000001-A`, `...-B`) remain attached to their parent number.

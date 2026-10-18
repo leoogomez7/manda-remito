@@ -2,7 +2,7 @@ import { createClient } from "@libsql/client";
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-const TABLES = ["business_profiles", "clients", "invoices", "drafts", "working_drafts", "trash", "counters"] as const;
+const TABLES = ["business_profiles", "clients", "invoices", "drafts", "working_drafts", "trash", "counters", "pending_checkouts"] as const;
 type Collection = (typeof TABLES)[number];
 type Payload = {
   collection: Collection;
@@ -98,10 +98,18 @@ async function getDatabase() {
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (user_id, id)
     )`,
+    `CREATE TABLE IF NOT EXISTS pending_checkouts (
+      user_id TEXT NOT NULL,
+      id TEXT NOT NULL,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, id)
+    )`,
     "CREATE INDEX IF NOT EXISTS clients_user_updated ON clients(user_id, updated_at)",
     "CREATE INDEX IF NOT EXISTS invoices_user_updated ON invoices(user_id, updated_at)",
     "CREATE INDEX IF NOT EXISTS drafts_user_updated ON drafts(user_id, updated_at)",
     "CREATE INDEX IF NOT EXISTS trash_user_updated ON trash(user_id, updated_at)",
+    "CREATE INDEX IF NOT EXISTS pending_checkouts_user_updated ON pending_checkouts(user_id, updated_at)",
   ]).then(() => undefined).catch((error) => {
     schemaReady = undefined;
     throw error;

@@ -193,7 +193,7 @@ function CloudDataBootstrap({ children }: { children: React.ReactNode }) {
       <div className="glass w-full max-w-md rounded-2xl p-6 text-center">
         <p className="text-lg font-semibold">{error ? "No se pudieron sincronizar tus datos" : "Cargando tus datos"}</p>
         <p className="mt-2 text-sm text-muted-foreground">
-          {error || "Conectando con tu cuenta para cargar remitos, clientes y borradores."}
+          {error || "Conectando con la base de datos para cargar tus datos."}
         </p>
         {error && (
           <button type="button" className="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setAttempt((value) => value + 1)}>

@@ -5,7 +5,6 @@ const REMITO_GENERATION_FEE_ARS = 2000;
 
 type VerifyPaymentRequest = {
   paymentId?: unknown;
-  number?: unknown;
 };
 
 function requiredEnv(name: string): string {
@@ -59,8 +58,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
   const paymentId = typeof body?.paymentId === "string" || typeof body?.paymentId === "number"
     ? String(body.paymentId).trim()
     : "";
-  const number = typeof body?.number === "string" ? body.number.trim() : "";
-  if (!/^\d{1,30}$/.test(paymentId) || !number || number.length > 100) {
+  if (!/^\d{1,30}$/.test(paymentId)) {
     return response.status(400).json({ error: "Los datos para verificar el pago no son válidos." });
   }
 
@@ -85,12 +83,14 @@ export default async function handler(request: VercelRequest, response: VercelRe
     const approved = payment.status === "approved"
       && Number(payment.transaction_amount) === REMITO_GENERATION_FEE_ARS
       && payment.currency_id === "ARS"
-      && payment.external_reference === number;
+      && typeof payment.external_reference === "string"
+      && payment.external_reference.length > 0
+      && payment.external_reference.length <= 100;
     if (!approved) {
       return response.status(402).json({ error: "Mercado Pago no confirmó un pago aprobado por ARS 2.000 para este remito." });
     }
 
-    return response.status(200).json({ approved: true });
+    return response.status(200).json({ approved: true, number: payment.external_reference });
   } catch (error) {
     console.error("No se pudo verificar el pago del remito", error);
     return response.status(503).json({ error: error instanceof Error ? error.message : "No se pudo verificar el pago." });

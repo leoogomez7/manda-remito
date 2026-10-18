@@ -1,5 +1,5 @@
 import type { Invoice } from "@/lib/invoices";
-import { queueCloudChange } from "@/lib/cloud-sync";
+import { getCloudRecords, queueCloudChange } from "@/lib/cloud-sync";
 
 export type ClientData = Invoice["client"];
 
@@ -9,25 +9,13 @@ export interface SavedClient {
   client: ClientData;
 }
 
-const CLIENTS_KEY_PREFIX = "mf:clients:";
-
-function clientsStorageKey(userEmail?: string) {
-  const account = userEmail?.trim().toLowerCase() || "anonymous";
-  return `${CLIENTS_KEY_PREFIX}${encodeURIComponent(account)}`;
-}
-
 export function getSavedClients(userEmail?: string): SavedClient[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(localStorage.getItem(clientsStorageKey(userEmail)) || "[]") as SavedClient[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  void userEmail;
+  return getCloudRecords("clients") as unknown as SavedClient[];
 }
 
 export function saveClient(client: ClientData, userEmail?: string, id?: string) {
-  if (typeof window === "undefined") return;
+  void userEmail;
   const clients = getSavedClients(userEmail);
   const existing = id
     ? clients.find((item) => item.id === id)
@@ -40,7 +28,6 @@ export function saveClient(client: ClientData, userEmail?: string, id?: string) 
   const updated = existing
     ? clients.map((item) => item.id === existing.id ? savedClient : item)
     : [savedClient, ...clients];
-  localStorage.setItem(clientsStorageKey(userEmail), JSON.stringify(updated));
   void queueCloudChange({ collection: "clients", records: [savedClient as unknown as Record<string, unknown>] });
   return savedClient;
 }
