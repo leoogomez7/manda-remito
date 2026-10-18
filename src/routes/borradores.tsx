@@ -203,10 +203,10 @@ function BorradoresPage() {
                       <div className="flex items-center justify-center gap-2">
                         {!isSampleDraft(draft) ? (
                           <>
-                            <IconActionButton label={`Modificar borrador ${draft.number}`} onClick={() => void handleEdit(draft)}>
+                            <IconActionButton label="Modificar" onClick={() => void handleEdit(draft)}>
                               <Pencil className="h-4 w-4" />
                             </IconActionButton>
-                            <IconActionButton label={`Eliminar borrador ${draft.number}`} tone="danger" onClick={() => handleDelete(draft.id)}>
+                            <IconActionButton label="Eliminar borrador" tone="danger" onClick={() => handleDelete(draft.id)}>
                               <Trash2 className="h-4 w-4" />
                             </IconActionButton>
                           </>
@@ -245,10 +245,10 @@ function BorradoresPage() {
                   <div className="mt-3 flex flex-wrap justify-start gap-2">
                     {!isSampleDraft(draft) ? (
                       <>
-                        <IconActionButton label={`Modificar borrador ${draft.number}`} onClick={() => void handleEdit(draft)}>
+                        <IconActionButton label="Modificar" onClick={() => void handleEdit(draft)}>
                           <Pencil className="h-4 w-4" />
                         </IconActionButton>
-                        <IconActionButton label={`Eliminar borrador ${draft.number}`} tone="danger" onClick={() => handleDelete(draft.id)}>
+                        <IconActionButton label="Eliminar borrador" tone="danger" onClick={() => handleDelete(draft.id)}>
                           <Trash2 className="h-4 w-4" />
                         </IconActionButton>
                       </>

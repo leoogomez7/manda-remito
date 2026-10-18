@@ -170,10 +170,10 @@ function ClientesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center gap-1">
-                          <IconActionButton label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
+                          <IconActionButton label="Ver remitos" onClick={() => setRemitosClient(client)}>
                             <Eye className="h-4 w-4" />
                           </IconActionButton>
-                          <IconActionButton label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
+                          <IconActionButton label="Editar" onClick={() => openEditClient(client)}>
                             <Pencil className="h-4 w-4" />
                           </IconActionButton>
                         </div>
@@ -209,10 +209,10 @@ function ClientesPage() {
                     </div>
                   </dl>
                   <div className="flex flex-wrap gap-2">
-                    <IconActionButton label={`Ver remitos de ${client.name}`} onClick={() => setRemitosClient(client)}>
+                    <IconActionButton label="Ver remitos" onClick={() => setRemitosClient(client)}>
                       <Eye className="h-4 w-4" />
                     </IconActionButton>
-                    <IconActionButton label={`Editar datos de ${client.name}`} onClick={() => openEditClient(client)}>
+                    <IconActionButton label="Editar" onClick={() => openEditClient(client)}>
                       <Pencil className="h-4 w-4" />
                     </IconActionButton>
                   </div>

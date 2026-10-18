@@ -121,10 +121,10 @@ function PapeleraPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-2">
-                          <IconActionButton label={`Restaurar ${record.number}`} tone="success" onClick={() => handleRestore(entry)}>
+                          <IconActionButton label="Restaurar" tone="success" onClick={() => handleRestore(entry)}>
                             <RotateCcw className="h-4 w-4" />
                           </IconActionButton>
-                          <IconActionButton label={`Eliminar ${record.number} definitivamente`} tone="danger" onClick={() => setEntryToDelete(entry.id)}>
+                          <IconActionButton label="Eliminar definitivamente" tone="danger" onClick={() => setEntryToDelete(entry.id)}>
                             <Trash2 className="h-4 w-4" />
                           </IconActionButton>
                         </div>
@@ -162,10 +162,10 @@ function PapeleraPage() {
                     Se elimina {expiry.toLocaleDateString("es-AR")} · {daysLeft} día{daysLeft === 1 ? "" : "s"}
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    <IconActionButton label={`Restaurar ${record.number}`} tone="success" onClick={() => handleRestore(entry)}>
+                    <IconActionButton label="Restaurar" tone="success" onClick={() => handleRestore(entry)}>
                       <RotateCcw className="h-4 w-4" />
                     </IconActionButton>
-                    <IconActionButton label={`Eliminar ${record.number} definitivamente`} tone="danger" onClick={() => setEntryToDelete(entry.id)}>
+                    <IconActionButton label="Eliminar definitivamente" tone="danger" onClick={() => setEntryToDelete(entry.id)}>
                       <Trash2 className="h-4 w-4" />
                     </IconActionButton>
                   </div>
