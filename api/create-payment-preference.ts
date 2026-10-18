@@ -1,3 +1,4 @@
+import { createClient } from "@libsql/client";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -61,6 +62,19 @@ export default async function handler(request: VercelRequest, response: VercelRe
   }
 
   try {
+    const db = createClient({ url: requiredEnv("TURSO_DATABASE_URL"), authToken: requiredEnv("TURSO_AUTH_TOKEN") });
+    await db.execute(`CREATE TABLE IF NOT EXISTS plan_subscriptions (
+      user_id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, starts_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+      payment_id TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    const planResult = await db.execute({
+      sql: "SELECT expires_at FROM plan_subscriptions WHERE user_id = ?",
+      args: [userId],
+    });
+    if (planResult.rows[0] && Date.parse(String(planResult.rows[0].expires_at)) > Date.now()) {
+      return response.status(409).json({ error: "Tu plan está activo; no necesitas pagar por cada remito." });
+    }
+
     const accessToken = requiredEnv("MERCADOPAGO_ACCESS_TOKEN");
     const originHeader = request.headers.origin;
     const configuredOrigin = process.env.APP_URL?.trim();

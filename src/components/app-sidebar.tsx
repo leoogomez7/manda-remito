@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users } from "lucide-react";
+import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users, WalletCards } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -29,6 +29,7 @@ import {
 
 const items = [
   { title: "Menú principal", url: "/", icon: LayoutDashboard },
+  { title: "Planes de pago", url: "/planes", icon: WalletCards },
   { title: "Mis datos", url: "/mis-datos", icon: UserRound },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Generar remito", url: "/nueva", icon: FilePlus2 },

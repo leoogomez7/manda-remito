@@ -208,7 +208,7 @@ export function NuevaFactura() {
   }, [selectedPendingInvoice?.id]);
 
 
-  const generateInvoice = async (applyDiscount: boolean) => {
+  const generateInvoice = async (waiveGenerationFee: boolean) => {
     let num: string;
     try {
       num = selectedPendingInvoice
@@ -244,7 +244,7 @@ export function NuevaFactura() {
       settlesInvoiceId: selectedPendingInvoice?.id,
     };
 
-    if (!applyDiscount) {
+    if (!waiveGenerationFee) {
       try {
         const token = await getIdToken();
         if (!token) throw new Error("No se pudo validar tu sesión para iniciar el pago.");
@@ -348,7 +348,19 @@ export function NuevaFactura() {
         }
         applyDiscount = true;
       }
-      await generateInvoice(applyDiscount);
+      let hasActivePlan = false;
+      if (!applyDiscount) {
+        const token = await getIdToken();
+        if (!token) throw new Error("No se pudo validar tu sesión para consultar el plan.");
+        const response = await fetch("/api/account-plan", {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({})) as { active?: boolean; error?: string };
+        if (!response.ok) throw new Error(result.error || "No se pudo consultar el estado de tu plan.");
+        hasActivePlan = result.active === true;
+      }
+      await generateInvoice(applyDiscount || hasActivePlan);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo verificar el código.");
     } finally {
@@ -1091,7 +1103,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               </Button>
             </div>
             {discountApplied && (
-              <p className="text-sm font-medium text-(--neon-cyan)">Código válido: se bonifica el costo de generación. Los importes del remito no cambian.</p>
+              <p className="text-sm font-medium text-(--neon-cyan)">Código válido.</p>
             )}
           </div>
           <div className="space-y-4 rounded-xl border border-border/60 bg-background/50 p-4 text-sm">

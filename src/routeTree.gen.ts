@@ -16,6 +16,7 @@ import { Route as HistorialRouteImport } from './routes/historial'
 import { Route as MisDatosRouteImport } from './routes/mis-datos'
 import { Route as NuevaRouteImport } from './routes/nueva'
 import { Route as PapeleraRouteImport } from './routes/papelera'
+import { Route as PlanesRouteImport } from './routes/planes'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -52,6 +53,11 @@ const PapeleraRoute = PapeleraRouteImport.update({
   path: '/papelera',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlanesRoute = PlanesRouteImport.update({
+  id: '/planes',
+  path: '/planes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +67,7 @@ export interface FileRoutesByFullPath {
   '/mis-datos': typeof MisDatosRoute
   '/nueva': typeof NuevaRoute
   '/papelera': typeof PapeleraRoute
+  '/planes': typeof PlanesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByTo {
   '/mis-datos': typeof MisDatosRoute
   '/nueva': typeof NuevaRoute
   '/papelera': typeof PapeleraRoute
+  '/planes': typeof PlanesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +88,7 @@ export interface FileRoutesById {
   '/mis-datos': typeof MisDatosRoute
   '/nueva': typeof NuevaRoute
   '/papelera': typeof PapeleraRoute
+  '/planes': typeof PlanesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/mis-datos'
     | '/nueva'
     | '/papelera'
+    | '/planes'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/mis-datos'
     | '/nueva'
     | '/papelera'
+    | '/planes'
   id:
     | '__root__'
     | '/'
@@ -109,6 +120,7 @@ export interface FileRouteTypes {
     | '/mis-datos'
     | '/nueva'
     | '/papelera'
+    | '/planes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +131,7 @@ export interface RootRouteChildren {
   MisDatosRoute: typeof MisDatosRoute
   NuevaRoute: typeof NuevaRoute
   PapeleraRoute: typeof PapeleraRoute
+  PlanesRoute: typeof PlanesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PapeleraRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/planes': {
+      id: '/planes'
+      path: '/planes'
+      fullPath: '/planes'
+      preLoaderRoute: typeof PlanesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +203,7 @@ const rootRouteChildren: RootRouteChildren = {
   MisDatosRoute: MisDatosRoute,
   NuevaRoute: NuevaRoute,
   PapeleraRoute: PapeleraRoute,
+  PlanesRoute: PlanesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

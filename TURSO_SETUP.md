@@ -28,6 +28,10 @@ To create a Mercado Pago payment link after the remito is confirmed, add these V
 
 The confirmation modal shows the remito totals separately from the ARS 2,000 generation fee. Without a valid code, the authenticated API creates a Mercado Pago preference for the fixed ARS fee; the remito is not saved or generated until the app verifies an approved payment with Mercado Pago. With a valid code, the fee is waived and the remito is generated immediately. Configure live or test credentials consistently. The current integration verifies the return from Checkout Pro; it does not use payment webhooks to handle cases where the user does not return to the app.
 
+### Optional prepaid plans
+
+The `Planes de pago` page offers one-time purchases (no automatic renewal): Bronce (ARS 9,999 / 1 month), Plata (ARS 19,999 / 3 months), Oro (ARS 32,999 / 6 months), and Platino (ARS 52,999 / 12 months). An approved payment starts the exact calendar-month term at approval time and waives the ARS 2,000 individual generation fee while active. Without an active plan, users can continue paying ARS 2,000 per remito. Plan checkout and approval verification use the existing server-only `MERCADOPAGO_ACCESS_TOKEN`; plan ownership, purchase, and expiration are verified/stored in Turso using the existing `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` plus authenticated Kinde identity. No extra environment variables are needed.
+
 ## 3. First login and data migration
 
 Sign in to the deployed app. The first authenticated load creates the Turso tables, imports this browser's existing invoices, drafts, trash entries, clients, profile, working draft, and queued changes that are not already in the cloud, then removes the migrated app data from localStorage. Turso is the source of truth. For faster subsequent startup, the app keeps a per-account read snapshot in IndexedDB; it displays that snapshot immediately and revalidates against Turso in the background. All persistent writes still go to Turso. Subsequent signed-in devices load the same account's data. Saved drafts in `/borradores` and edits opened into `/nueva` are synchronized.
