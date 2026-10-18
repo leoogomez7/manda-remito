@@ -145,7 +145,17 @@ export async function queueCloudChange(change: CloudDelta) {
     pending.push({ collection: change.collection, records: [], deleteIds: deletes.slice(offset, offset + 100) });
   }
   if (change.value) pending.push({ collection: change.collection, value: change.value });
-  writePending(pending, owner);
+  try {
+    writePending(pending, owner);
+  } catch (error) {
+    console.warn("No hay espacio para guardar la cola local; se intentará sincronizar directamente", error);
+    try {
+      await requestCloud("PUT", change, getToken);
+    } catch (syncError) {
+      console.error("No se pudo guardar el cambio localmente ni sincronizarlo con la nube", syncError);
+    }
+    return;
+  }
   try {
     await flushPendingQueue(owner, getToken);
   } catch (error) {

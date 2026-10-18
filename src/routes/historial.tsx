@@ -140,21 +140,19 @@ function HistorialPage() {
   const confirmDelete = async () => {
     if (!invoiceToDelete) return;
     setMovingToTrash(true);
-    const moved = moveInvoiceToTrash(invoiceToDelete);
-    if (!moved) {
-      setMovingToTrash(false);
-      setInvoiceToDelete(null);
-      toast.error("No se encontró el remito. Actualiza el historial e intenta otra vez.");
-      return;
-    }
-    setList([...sampleHistorialInvoices, ...getInvoices()]);
-    setInvoiceToDelete(null);
-    toast.success("Remito movido a la papelera");
     try {
+      const moved = moveInvoiceToTrash(invoiceToDelete);
+      if (!moved) {
+        toast.error("No se pudo mover el remito. Libera espacio del navegador e intenta otra vez.");
+        return;
+      }
+      setList([...sampleHistorialInvoices, ...getInvoices()]);
+      setInvoiceToDelete(null);
+      toast.success("Remito movido a la papelera");
       await flushCloudChanges();
     } catch (error) {
       console.error("El remito se movió localmente, pero no se sincronizó la papelera", error);
-      toast.error("El remito está en la papelera de este dispositivo, pero no se pudo sincronizar con la nube.");
+      toast.error("No se pudo mover el remito por falta de espacio o un error de sincronización.");
     } finally {
       setMovingToTrash(false);
     }
@@ -342,7 +340,7 @@ function HistorialPage() {
           </table>
 
           {/* Mobile cards */}
-          <div className="divide-y divide-border/40 md:hidden">
+          <div className="divide-y divide-cyan-400/30 md:hidden">
             {filtered.map((i) => (
               <div key={i.id} className="min-w-0 p-4">
                 <div className="flex min-w-0 flex-col gap-3">
@@ -350,8 +348,8 @@ function HistorialPage() {
                     <p className="break-all font-mono text-sm text-color:var(--neon-cyan)">
                       {i.number}
                     </p>
-                    <p className="mt-0.5 break-words font-semibold">{i.client.name || "—"}</p>
-                    <p className="break-words text-xs text-muted-foreground">
+                    <p className="mt-0.5 wrap-break-word font-semibold">{i.client.name || "—"}</p>
+                    <p className="wrap-break-word text-xs text-muted-foreground">
                       {new Date(i.createdAt).toLocaleDateString("es-AR")} ·{" "}
                       {PAYMENT_LABEL[i.paymentMethod]}
                     </p>
@@ -370,44 +368,51 @@ function HistorialPage() {
 
                 <div className="mt-3 flex flex-wrap justify-start gap-2">
                   <Button
-                    size="sm"
-                    variant="secondary"
+                    size="icon"
+                    variant="ghost"
                     type="button"
+                    title="Descargar PDF"
+                    aria-label={`Descargar PDF de ${i.number}`}
                     onClick={() => handleDownloadPDF(i)}
                   >
-                    <Download className="mr-1 h-3.5 w-3.5" /> PDF
+                    <Download className="h-4 w-4" />
                   </Button>
 
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
+                    title="Imprimir"
+                    aria-label={`Imprimir ${i.number}`}
                     onClick={() => handlePrintPDF(i)}
                   >
-                    <Printer className="mr-1 h-3.5 w-3.5" /> Imprimir
+                    <Printer className="h-4 w-4" />
                   </Button>
 
                   {(() => {
                     const { settled, root } = accountState(i);
                     return (
                       <Button
-                        size="sm"
-                        variant="secondary"
+                        size="icon"
+                        variant="ghost"
                         disabled={settled}
                         title={settled ? "Cuenta saldada" : "Saldar cuenta"}
+                        aria-label={settled ? `Cuenta saldada ${i.number}` : `Saldar cuenta ${i.number}`}
                         onClick={() => handleSettleAccount(root)}
                       >
-                        <BadgeCheck className="mr-1 h-3.5 w-3.5" /> Saldar cuenta
+                        <BadgeCheck className="h-4 w-4" />
                       </Button>
                     );
                   })()}
 
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
+                    title="Enviar a papelera"
+                    aria-label={`Enviar ${i.number} a papelera`}
                     onClick={() => handleDelete(i.id)}
                     className="text-destructive hover:text-destructive"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, FileText, Plus, Search, Trash2 } from "lucide-react";
+import { Archive, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -194,16 +194,20 @@ function BorradoresPage() {
                         {!isSampleDraft(draft) ? (
                           <>
                             <Button
-                              size="sm"
+                              size="icon"
                               variant="secondary"
                               onClick={() => handleEdit(draft)}
+                              title="Modificar borrador"
+                              aria-label={`Modificar borrador ${draft.number}`}
                             >
-                              Modificar
+                              <Pencil className="h-4 w-4" />
                             </Button>
                             <button
+                              type="button"
                               onClick={() => handleDelete(draft.id)}
                               className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                               title="Eliminar borrador"
+                              aria-label={`Eliminar borrador ${draft.number}`}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
@@ -220,7 +224,7 @@ function BorradoresPage() {
               </tbody>
             </table>
 
-            <div className="divide-y divide-border/40 md:hidden">
+            <div className="divide-y divide-cyan-400/30 md:hidden">
               {filtered.map((draft) => (
                 <div key={draft.id} className="min-w-0 p-4">
                   <div className="flex min-w-0 flex-col gap-3">
@@ -244,19 +248,23 @@ function BorradoresPage() {
                     {!isSampleDraft(draft) ? (
                       <>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="secondary"
                           onClick={() => handleEdit(draft)}
+                          title="Modificar borrador"
+                          aria-label={`Modificar borrador ${draft.number}`}
                         >
-                          Modificar
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="ghost"
                           onClick={() => handleDelete(draft.id)}
                           className="text-destructive hover:text-destructive"
+                          title="Eliminar borrador"
+                          aria-label={`Eliminar borrador ${draft.number}`}
                         >
-                          Eliminar
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </>
                     ) : (

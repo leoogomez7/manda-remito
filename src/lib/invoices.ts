@@ -198,14 +198,37 @@ export function moveInvoiceToTrash(id: string): boolean {
   const invoice = invoices.find((item) => item.id === id);
   if (!invoice) return false;
 
-  addTrashEntry({
+  // Logos are stored separately in the business profile. Do not duplicate large
+  // base64 images in the five-day trash archive.
+  const archivedInvoice: Invoice = {
+    ...invoice,
+    logoDataUrl: undefined,
+    businessProfile: invoice.businessProfile
+      ? { ...invoice.businessProfile, logoDataUrl: undefined }
+      : undefined,
+  };
+  const entry: TrashEntry = {
     id: crypto.randomUUID(),
     kind: "invoice",
     deletedAt: new Date().toISOString(),
-    records: [invoice],
-  });
-  saveInvoices(removeInvoiceRecord(id, invoices));
-  return true;
+    records: [archivedInvoice],
+  };
+
+  try {
+    // Removing it first frees the space needed to archive the invoice locally.
+    saveInvoices(removeInvoiceRecord(id, invoices));
+    if (addTrashEntry(entry)) return true;
+  } catch (error) {
+    console.error("No se pudo guardar el remito en la papelera", error);
+  }
+
+  // Keep the invoice visible if browser storage is still full.
+  try {
+    saveInvoices(invoices);
+  } catch (error) {
+    console.error("No se pudo restaurar el remito después del fallo de papelera", error);
+  }
+  return false;
 }
 
 function removeInvoiceRecord(id: string, invoices: Invoice[]): Invoice[] {
@@ -389,22 +412,28 @@ export function permanentlyDeleteTrashEntry(id: string) {
   saveTrash(getTrash().filter((entry) => entry.id !== id));
 }
 
-function addTrashEntry(entry: TrashEntry) {
-  saveTrash([entry, ...getTrash()]);
+function addTrashEntry(entry: TrashEntry): boolean {
+  return saveTrash([entry, ...getTrash()]);
 }
 
-function saveTrash(entries: TrashEntry[]) {
-  if (typeof window === "undefined") return;
+function saveTrash(entries: TrashEntry[]): boolean {
+  if (typeof window === "undefined") return false;
   const storageKey = scopedStorageKey(KEY_TRASH);
   const previous = safeParse<TrashEntry[]>(localStorage.getItem(storageKey), []);
   const previousById = new Map(previous.map((entry) => [entry.id, entry]));
   const nextIds = new Set(entries.map((entry) => entry.id));
   const records = entries.filter((entry) => JSON.stringify(previousById.get(entry.id)) !== JSON.stringify(entry));
   const deleteIds = previous.filter((entry) => !nextIds.has(entry.id)).map((entry) => entry.id);
-  localStorage.setItem(storageKey, JSON.stringify(entries));
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(entries));
+  } catch (error) {
+    console.error("No hay espacio disponible para guardar la papelera en este dispositivo", error);
+    return false;
+  }
   if (records.length || deleteIds.length) {
     void queueCloudChange({ collection: "trash", records: records as unknown as Record<string, unknown>[], deleteIds });
   }
+  return true;
 }
 
 export function updateDraft(updated: Invoice) {
