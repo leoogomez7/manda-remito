@@ -215,18 +215,27 @@ function CloudDataBootstrap({ children }: { children: React.ReactNode }) {
 function AppHeader() {
   const { state } = useSidebar();
   const { isAuthenticated, user } = useAppAuth();
+  const sidebarCollapsed = state === "collapsed";
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-background/60 px-4 backdrop-blur">
       <SidebarTrigger />
       <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Manda Remito</div>
-      {state === "collapsed" && isAuthenticated && user?.email && (
-        <div className="ml-auto flex min-w-0 items-center gap-2 rounded-full border border-(--neon-cyan)/20 bg-background/70 px-3 py-1.5 text-xs">
-          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
-          <span className="shrink-0 text-muted-foreground">Sesión activa</span>
-          <span className="max-w-[35vw] truncate font-medium text-foreground sm:max-w-64" title={user.email}>
-            {user.email}
-          </span>
+      {sidebarCollapsed && isAuthenticated && user?.email && (
+        <div className="ml-auto flex min-w-0 items-center gap-2">
+          <Link
+            to="/planes"
+            className="inline-flex shrink-0 items-center rounded-full border border-(--neon-fuchsia)/30 bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-(--neon-fuchsia)/60 hover:bg-(--neon-fuchsia)/10"
+          >
+            Comprar plan
+          </Link>
+          <div className="flex min-w-0 items-center gap-2 rounded-full border border-(--neon-cyan)/20 bg-background/70 px-3 py-1.5 text-xs">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
+            <span className="shrink-0 text-muted-foreground">Sesión activa</span>
+            <span className="max-w-[35vw] truncate font-medium text-foreground sm:max-w-64" title={user.email}>
+              {user.email}
+            </span>
+          </div>
         </div>
       )}
     </header>

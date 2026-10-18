@@ -1142,7 +1142,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
             </Button>
             <Button type="button" disabled={creatingPayment} onClick={() => void confirmAndPay()}>
               {creatingPayment
-                ? "Preparando…"
+                ? "Preparando pago…"
                 : discountApplied
                   ? "Confirmar y generar remito gratis"
                   : `Pagar ${formatMoney(REMITO_GENERATION_FEE_ARS, "ARS")} y generar remito`}

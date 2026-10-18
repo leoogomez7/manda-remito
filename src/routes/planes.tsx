@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BadgeCheck, CalendarClock, Crown, Sparkles } from "lucide-react";
+import { BadgeCheck, CalendarClock, Crown, Gem, Medal, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useAppAuth } from "@/lib/auth";
@@ -103,6 +103,7 @@ function PlanesPage() {
 
   const currentPlan = PAYMENT_PLANS.find((plan) => plan.id === subscription?.planId);
   const planIsActive = Boolean(subscription && Date.parse(subscription.expiresAt) > Date.now());
+  const planIcons = [Medal, Gem, Crown, Sparkles] as const;
 
   return (
     <div className={PAGE_CONTAINER_CLASS}>
@@ -133,7 +134,10 @@ function PlanesPage() {
             <article key={plan.id} className="glass flex flex-col rounded-2xl border border-border/60 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-(--neon-cyan)/10 text-(--neon-cyan)">
-                  {index === 0 ? <Crown className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                  {(() => {
+                    const PlanIcon = planIcons[index] ?? Shield;
+                    return <PlanIcon className="h-5 w-5" />;
+                  })()}
                 </div>
                 {isCurrent && <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-300">Actual</span>}
               </div>
@@ -146,7 +150,7 @@ function PlanesPage() {
                 <li>Sin renovación automática</li>
               </ul>
               <Button className="mt-6 w-full" disabled={loading || verifying || buyingPlan !== null} onClick={() => void buyPlan(plan.id)}>
-                {buyingPlan === plan.id ? "Abriendo Mercado Pago…" : isCurrent ? "Comprar nuevamente" : "Elegir plan"}
+                {buyingPlan === plan.id ? "Preparando pago…" : isCurrent ? "Comprar nuevamente" : "Elegir plan"}
               </Button>
             </article>
           );
