@@ -26,13 +26,17 @@ let cloudSnapshot: CloudSnapshot | null = null;
 let cloudProfile: Record<string, unknown> | null = null;
 const CLOUD_CACHE_DB = "manda-remito-cloud-cache";
 const CLOUD_CACHE_STORE = "snapshots";
+const GUEST_CHECKOUT_STORE = "guest-checkouts";
 
 function openCloudCache(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(CLOUD_CACHE_DB, 1);
+    const request = indexedDB.open(CLOUD_CACHE_DB, 2);
     request.onupgradeneeded = () => {
       if (!request.result.objectStoreNames.contains(CLOUD_CACHE_STORE)) {
         request.result.createObjectStore(CLOUD_CACHE_STORE);
+      }
+      if (!request.result.objectStoreNames.contains(GUEST_CHECKOUT_STORE)) {
+        request.result.createObjectStore(GUEST_CHECKOUT_STORE);
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -101,6 +105,10 @@ export function setDataOwner(userEmail?: string) {
     cloudProfile = null;
   }
   dataOwnerEmail = nextOwner;
+  if (!nextOwner) {
+    cloudSnapshot = loadAnonymousSnapshot();
+    cloudProfile = readAnonymousProfile();
+  }
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("mf:data-owner-changed"));
   }
@@ -122,6 +130,71 @@ const emptySnapshot = (): CloudSnapshot => ({
   business_profiles: null,
   clients: [], invoices: [], drafts: [], working_drafts: [], trash: [], counters: [], pending_checkouts: [],
 });
+
+const ANONYMOUS_COLLECTION_KEYS: Partial<Record<Exclude<CloudCollection, "business_profiles" | "working_drafts">, string>> = {
+  clients: "mf:clients",
+  invoices: "mf:invoices",
+  drafts: "mf:drafts",
+  trash: "mf:trash",
+  counters: "mf:counters",
+  pending_checkouts: "mf:pending-checkouts",
+};
+
+function readAnonymousArray(key: string): Record<string, unknown>[] {
+  try {
+    const byId = new Map<string, Record<string, unknown>>();
+    for (const storageKey of [`${key}:anonymous`, key]) {
+      const value = JSON.parse(localStorage.getItem(storageKey) || "[]") as unknown;
+      if (!Array.isArray(value)) continue;
+      for (const record of value) {
+        if (record && typeof record === "object" && typeof (record as { id?: unknown }).id === "string") {
+          byId.set((record as { id: string }).id, record as Record<string, unknown>);
+        }
+      }
+    }
+    return [...byId.values()];
+  } catch {
+    return [];
+  }
+}
+
+function readAnonymousProfile(): Record<string, unknown> | null {
+  try {
+    return JSON.parse(localStorage.getItem("mf:business-profile:anonymous") || localStorage.getItem("mf:business-profile") || "null") as Record<string, unknown> | null;
+  } catch {
+    return null;
+  }
+}
+
+function loadAnonymousSnapshot(): CloudSnapshot {
+  const snapshot = emptySnapshot();
+  for (const [collection, key] of Object.entries(ANONYMOUS_COLLECTION_KEYS)) {
+    snapshot[collection as keyof CloudSnapshot] = readAnonymousArray(key) as never;
+  }
+  try {
+    const draft = JSON.parse(localStorage.getItem("mf:draft:anonymous") || localStorage.getItem("mf:draft") || "null") as Record<string, unknown> | null;
+    if (draft && typeof draft === "object") snapshot.working_drafts = [{ id: "current", draft }];
+  } catch {
+    // Ignore malformed anonymous working-draft data and keep the remaining local data available.
+  }
+  snapshot.business_profiles = readAnonymousProfile();
+  return snapshot;
+}
+
+function persistAnonymousChange(change: CloudDelta) {
+  if (change.collection === "business_profiles") {
+    if (change.value) localStorage.setItem("mf:business-profile:anonymous", JSON.stringify(change.value));
+    return;
+  }
+  if (change.collection === "working_drafts") {
+    const currentDraft = cloudSnapshot?.working_drafts.find((record) => record.id === "current")?.draft;
+    if (currentDraft) localStorage.setItem("mf:draft:anonymous", JSON.stringify(currentDraft));
+    else localStorage.removeItem("mf:draft:anonymous");
+    return;
+  }
+  const key = ANONYMOUS_COLLECTION_KEYS[change.collection];
+  if (key) localStorage.setItem(`${key}:anonymous`, JSON.stringify(cloudSnapshot?.[change.collection] ?? []));
+}
 
 export function getCloudRecords(collection: Exclude<CloudCollection, "business_profiles">): Record<string, unknown>[] {
   return cloudSnapshot?.[collection] ?? [];
@@ -196,7 +269,17 @@ async function flushPendingQueue(owner = dataOwnerEmail, getToken = tokenGetter)
 export async function queueCloudChange(change: CloudDelta) {
   const owner = dataOwnerEmail;
   const getToken = tokenGetter;
-  if (typeof window === "undefined" || !owner || !getToken) return;
+  if (typeof window === "undefined") return;
+  if (!owner || !getToken) {
+    if (!cloudSnapshot) cloudSnapshot = loadAnonymousSnapshot();
+    applyCloudDelta(change);
+    try {
+      persistAnonymousChange(change);
+    } catch (error) {
+      console.error("No se pudieron guardar los datos del visitante en este dispositivo", error);
+    }
+    return;
+  }
   applyCloudDelta(change);
   const pending = readPending(owner);
   const records = change.records ?? [];
@@ -285,7 +368,14 @@ async function migrateLegacyData(userEmail: string, data: CloudSnapshot, getToke
 
   const workingDraftKey = scopedStorageKey("mf:draft", userEmail);
   const oldWorkingDraft = (() => {
-    try { return JSON.parse(localStorage.getItem(workingDraftKey) || "null") as Record<string, unknown> | null; }
+    try {
+      return JSON.parse(
+        localStorage.getItem(workingDraftKey)
+          || localStorage.getItem("mf:draft:anonymous")
+          || localStorage.getItem("mf:draft")
+          || "null",
+      ) as Record<string, unknown> | null;
+    }
     catch { return null; }
   })();
   if (!(data.working_drafts ?? []).some((record) => record.id === "current") && oldWorkingDraft) {
@@ -370,4 +460,42 @@ export async function allocateInvoiceNumber() {
 
 export async function flushCloudChanges() {
   await flushPendingQueue();
+}
+
+export async function saveGuestCheckout(reference: string, invoice: Record<string, unknown>) {
+  if (typeof indexedDB === "undefined") throw new Error("Este navegador no permite guardar el checkout invitado.");
+  const database = await openCloudCache();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(GUEST_CHECKOUT_STORE, "readwrite");
+    transaction.objectStore(GUEST_CHECKOUT_STORE).put(invoice, reference);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("No se pudo guardar el remito pendiente."));
+    transaction.onabort = () => reject(transaction.error ?? new Error("Se canceló el guardado del remito pendiente."));
+  });
+  database.close();
+}
+
+export async function getGuestCheckout(reference: string): Promise<Record<string, unknown> | null> {
+  if (typeof indexedDB === "undefined") return null;
+  const database = await openCloudCache();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(GUEST_CHECKOUT_STORE, "readonly");
+    const request = transaction.objectStore(GUEST_CHECKOUT_STORE).get(reference);
+    request.onsuccess = () => resolve(request.result ? request.result as Record<string, unknown> : null);
+    request.onerror = () => reject(request.error ?? new Error("No se pudo recuperar el remito pendiente."));
+    transaction.oncomplete = () => database.close();
+    transaction.onerror = () => database.close();
+  });
+}
+
+export async function removeGuestCheckout(reference: string) {
+  if (typeof indexedDB === "undefined") return;
+  const database = await openCloudCache();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction(GUEST_CHECKOUT_STORE, "readwrite");
+    transaction.objectStore(GUEST_CHECKOUT_STORE).delete(reference);
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("No se pudo limpiar el remito pendiente."));
+  });
+  database.close();
 }

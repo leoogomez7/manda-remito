@@ -73,7 +73,14 @@ function BorradoresPage() {
   const [draftToDelete, setDraftToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    setDrafts([sampleDraft, ...getDrafts()]);
+    const refreshDrafts = () => setDrafts([sampleDraft, ...getDrafts()]);
+    refreshDrafts();
+    window.addEventListener("mf:data-owner-changed", refreshDrafts);
+    window.addEventListener("mf:cloud-data-ready", refreshDrafts);
+    return () => {
+      window.removeEventListener("mf:data-owner-changed", refreshDrafts);
+      window.removeEventListener("mf:cloud-data-ready", refreshDrafts);
+    };
   }, []);
 
   const handleEdit = async (draft: Invoice) => {

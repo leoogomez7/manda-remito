@@ -4,6 +4,7 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 type PaymentRequest = {
   number?: unknown;
+  guestReference?: unknown;
 };
 
 const REMITO_GENERATION_FEE_ARS = 2000;
@@ -53,26 +54,28 @@ export default async function handler(request: VercelRequest, response: VercelRe
     console.error("Fallo al verificar la sesión Kinde para el pago", error);
     return response.status(500).json({ error: error instanceof Error ? error.message : "No se pudo verificar la sesión." });
   }
-  if (!userId) return response.status(401).json({ error: "Inicia sesión para crear el enlace de pago." });
-
   const body = request.body as PaymentRequest | undefined;
   const number = typeof body?.number === "string" ? body.number.trim() : "";
-  if (!number || number.length > 100) {
+  const guestReference = typeof body?.guestReference === "string" ? body.guestReference.trim() : "";
+  const isGuestCheckout = !userId;
+  if (isGuestCheckout ? !/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(guestReference) : !number || number.length > 100) {
     return response.status(400).json({ error: "Los datos del pago no son válidos." });
   }
 
   try {
-    const db = createClient({ url: requiredEnv("TURSO_DATABASE_URL"), authToken: requiredEnv("TURSO_AUTH_TOKEN") });
-    await db.execute(`CREATE TABLE IF NOT EXISTS plan_subscriptions (
-      user_id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, starts_at TEXT NOT NULL, expires_at TEXT NOT NULL,
-      payment_id TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-    )`);
-    const planResult = await db.execute({
-      sql: "SELECT expires_at FROM plan_subscriptions WHERE user_id = ?",
-      args: [userId],
-    });
-    if (planResult.rows[0] && Date.parse(String(planResult.rows[0].expires_at)) > Date.now()) {
-      return response.status(409).json({ error: "Tu plan está activo; no necesitas pagar por cada remito." });
+    if (userId) {
+      const db = createClient({ url: requiredEnv("TURSO_DATABASE_URL"), authToken: requiredEnv("TURSO_AUTH_TOKEN") });
+      await db.execute(`CREATE TABLE IF NOT EXISTS plan_subscriptions (
+        user_id TEXT PRIMARY KEY, plan_id TEXT NOT NULL, starts_at TEXT NOT NULL, expires_at TEXT NOT NULL,
+        payment_id TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      const planResult = await db.execute({
+        sql: "SELECT expires_at FROM plan_subscriptions WHERE user_id = ?",
+        args: [userId],
+      });
+      if (planResult.rows[0] && Date.parse(String(planResult.rows[0].expires_at)) > Date.now()) {
+        return response.status(409).json({ error: "Tu plan está activo; no necesitas pagar por cada remito." });
+      }
     }
 
     const accessToken = requiredEnv("MERCADOPAGO_ACCESS_TOKEN");
@@ -102,13 +105,13 @@ export default async function handler(request: VercelRequest, response: VercelRe
       },
       body: JSON.stringify({
         items: [{
-          id: number,
-          title: `Servicio de generación de remito ${number} — Manda Remito`,
+          id: isGuestCheckout ? guestReference : number,
+          title: isGuestCheckout ? "Servicio de generación de remito — Manda Remito" : `Servicio de generación de remito ${number} — Manda Remito`,
           quantity: 1,
           unit_price: REMITO_GENERATION_FEE_ARS,
           currency_id: "ARS",
         }],
-        external_reference: number,
+        external_reference: isGuestCheckout ? guestReference : number,
         ...(backUrls ? { back_urls: backUrls, auto_return: "approved" } : {}),
         statement_descriptor: "MANDA REMITO",
       }),
@@ -129,7 +132,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
       console.error("Mercado Pago no devolvió un enlace válido", result);
       return response.status(502).json({ error: "Mercado Pago no devolvió un enlace de pago válido." });
     }
-    return response.status(200).json({ paymentUrl });
+    return response.status(200).json({ paymentUrl, ...(isGuestCheckout ? { guestReference } : {}) });
   } catch (error) {
     console.error("No se pudo crear el enlace de pago de Mercado Pago", error);
     const message = error instanceof Error ? error.message : "No se pudo configurar el pago.";

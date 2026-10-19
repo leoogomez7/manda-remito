@@ -53,7 +53,14 @@ import {
   type PaymentMethod,
 } from "@/lib/invoices";
 import { getBusinessProfile } from "@/lib/business";
-import { flushCloudChanges, getCloudRecord, queueCloudChange } from "@/lib/cloud-sync";
+import {
+  flushCloudChanges,
+  getCloudRecord,
+  getGuestCheckout,
+  queueCloudChange,
+  removeGuestCheckout,
+  saveGuestCheckout,
+} from "@/lib/cloud-sync";
 import { useAppAuth } from "@/lib/auth";
 import { getSavedClients, mergeClientsWithInvoices } from "@/lib/clients";
 import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -213,7 +220,9 @@ export function NuevaFactura() {
     try {
       num = selectedPendingInvoice
         ? getNextSettlementNumber(selectedPendingInvoice)
-        : await nextNumber();
+        : user?.email
+          ? await nextNumber()
+          : `INV-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     } catch (error) {
       console.error("No se pudo reservar un número de remito en Turso", error);
       toast.error(error instanceof Error ? error.message : "No se pudo conectar con la base de datos. Intentá nuevamente.");
@@ -245,29 +254,40 @@ export function NuevaFactura() {
     };
 
     if (!waiveGenerationFee) {
+      const guestReference = user?.email ? undefined : crypto.randomUUID();
       try {
+        if (guestReference) await saveGuestCheckout(guestReference, invoice as unknown as Record<string, unknown>);
         const token = await getIdToken();
-        if (!token) throw new Error("No se pudo validar tu sesión para iniciar el pago.");
         const response = await fetch("/api/create-payment-preference", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ number: invoice.number }),
+          body: JSON.stringify(guestReference
+            ? { guestReference }
+            : { number: invoice.number }),
           cache: "no-store",
         });
-        const result = await response.json().catch(() => ({})) as { paymentUrl?: string; error?: string };
+        const result = await response.json().catch(() => ({})) as { paymentUrl?: string; error?: string; guestReference?: string };
         if (!response.ok || !result.paymentUrl) {
           throw new Error(result.error || "No se pudo crear el enlace de pago de Mercado Pago.");
         }
-        queueCloudChange({ collection: "pending_checkouts", records: [{ id: invoice.number, invoice: invoice as unknown as Record<string, unknown> }] });
-        saveDraft({ ...form, ...(editingDraftId ? { draftId: editingDraftId } : {}) });
-        await flushCloudChanges();
+        if (user?.email) {
+          queueCloudChange({ collection: "pending_checkouts", records: [{ id: invoice.number, invoice: invoice as unknown as Record<string, unknown> }] });
+          saveDraft({ ...form, ...(editingDraftId ? { draftId: editingDraftId } : {}) });
+          await flushCloudChanges();
+        } else {
+          if (!result.guestReference) {
+            throw new Error("Mercado Pago no devolvió la referencia del checkout invitado.");
+          }
+          saveDraft({ ...form, ...(editingDraftId ? { draftId: editingDraftId } : {}) });
+        }
         setConfirmationOpen(false);
         window.location.assign(result.paymentUrl);
         return;
       } catch (error) {
+        if (guestReference) await removeGuestCheckout(guestReference).catch(() => undefined);
         console.error("No se pudo iniciar el pago con Mercado Pago", error);
         toast.error(error instanceof Error ? error.message : "No se pudo iniciar el pago.");
         return;
@@ -332,12 +352,11 @@ export function NuevaFactura() {
       let applyDiscount = false;
       if (discountApplied && discountCode.trim()) {
         const token = await getIdToken();
-        if (!token) throw new Error("No se pudo validar tu sesión para verificar el código.");
         const response = await fetch("/api/validate-discount-code", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ code: discountCode.trim() }),
           cache: "no-store",
@@ -349,7 +368,7 @@ export function NuevaFactura() {
         applyDiscount = true;
       }
       let hasActivePlan = false;
-      if (!applyDiscount) {
+      if (!applyDiscount && user?.email) {
         const token = await getIdToken();
         if (!token) throw new Error("No se pudo validar tu sesión para consultar el plan.");
         const response = await fetch("/api/account-plan", {
@@ -378,12 +397,11 @@ export function NuevaFactura() {
     setValidatingCode(true);
     try {
       const token = await getIdToken();
-      if (!token) throw new Error("No se pudo validar tu sesión para verificar el código.");
       const response = await fetch("/api/validate-discount-code", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ code }),
         cache: "no-store",
@@ -403,46 +421,57 @@ export function NuevaFactura() {
   };
 
   useEffect(() => {
-    if (paymentResult !== "success" || !paymentId || !user?.email || processedPaymentId.current === paymentId) return;
+    if (paymentResult !== "success" || !paymentId || processedPaymentId.current === paymentId) return;
     processedPaymentId.current = paymentId;
 
     const completePaidGeneration = async () => {
       setCreatingPayment(true);
       try {
         const token = await getIdToken();
-        if (!token) throw new Error("No se pudo validar tu sesión para confirmar el pago.");
         const response = await fetch("/api/verify-remito-payment", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({ paymentId }),
           cache: "no-store",
         });
-        const result = await response.json().catch(() => ({})) as { approved?: boolean; number?: string; error?: string };
+        const result = await response.json().catch(() => ({})) as { approved?: boolean; number?: string; guestReference?: string; error?: string };
         if (!response.ok || !result.approved) {
           throw new Error(result.error || "Mercado Pago todavía no confirmó el pago. El remito no se generó.");
         }
-        const pendingInvoice = getCloudRecord("pending_checkouts", result.number ?? "")?.invoice as Invoice | undefined;
+        const pendingInvoice = result.guestReference
+          ? await getGuestCheckout(result.guestReference) as unknown as Invoice | null
+          : getCloudRecord("pending_checkouts", result.number ?? "")?.invoice as Invoice | undefined;
         if (!pendingInvoice?.number || !pendingInvoice.id) {
-          throw new Error("No se encontró en la base de datos el remito asociado al pago aprobado.");
+          throw new Error("No se encontró el remito pendiente asociado al pago aprobado.");
         }
 
-        addInvoice(pendingInvoice);
-        queueCloudChange({ collection: "pending_checkouts", deleteIds: [pendingInvoice.number] });
-        if (editingDraftId) removeDraft(editingDraftId);
-        setEditingDraftId(null);
-        clearDraft();
+        if (result.guestReference) {
+          addInvoice(pendingInvoice);
+          if (editingDraftId) removeDraft(editingDraftId);
+          setEditingDraftId(null);
+          clearDraft();
+          await removeGuestCheckout(result.guestReference);
+        } else {
+          addInvoice(pendingInvoice);
+          queueCloudChange({ collection: "pending_checkouts", deleteIds: [pendingInvoice.number] });
+          if (editingDraftId) removeDraft(editingDraftId);
+          setEditingDraftId(null);
+          clearDraft();
+        }
         workingDraftDirty.current = false;
         setGeneratedInvoice(pendingInvoice);
         resetForm();
 
-        try {
-          await flushCloudChanges();
-        } catch (error) {
-          console.error("No se pudo confirmar la sincronización del remito pagado", error);
-          toast.error("El remito quedó guardado en este dispositivo, pero la sincronización con la nube sigue pendiente.");
+        if (!result.guestReference) {
+          try {
+            await flushCloudChanges();
+          } catch (error) {
+            console.error("No se pudo confirmar la sincronización del remito pagado", error);
+            toast.error("El remito quedó guardado en este dispositivo, pero la sincronización con la nube sigue pendiente.");
+          }
         }
 
         try {
@@ -464,7 +493,7 @@ export function NuevaFactura() {
     };
 
     void completePaidGeneration();
-  }, [paymentResult, paymentId, user?.email, getIdToken, editingDraftId, navigate]);
+  }, [paymentResult, paymentId, getIdToken, editingDraftId, navigate]);
 
   useEffect(() => {
     if (paymentResult !== "failure" && paymentResult !== "pending") return;

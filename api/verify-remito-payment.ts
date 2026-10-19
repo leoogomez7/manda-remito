@@ -45,10 +45,9 @@ export default async function handler(request: VercelRequest, response: VercelRe
     return response.status(405).json({ error: "Método no permitido." });
   }
 
+  let isAuthenticated: boolean;
   try {
-    if (!await hasAuthenticatedUser(request)) {
-      return response.status(401).json({ error: "Inicia sesión para confirmar el pago." });
-    }
+    isAuthenticated = await hasAuthenticatedUser(request);
   } catch (error) {
     console.error("Fallo al verificar la sesión Kinde para confirmar el pago", error);
     return response.status(500).json({ error: error instanceof Error ? error.message : "No se pudo verificar la sesión." });
@@ -80,17 +79,25 @@ export default async function handler(request: VercelRequest, response: VercelRe
       return response.status(502).json({ error: "No se pudo verificar el pago con Mercado Pago." });
     }
 
+    const isGuestReference = typeof payment.external_reference === "string"
+      && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(payment.external_reference);
     const approved = payment.status === "approved"
       && Number(payment.transaction_amount) === REMITO_GENERATION_FEE_ARS
       && payment.currency_id === "ARS"
       && typeof payment.external_reference === "string"
       && payment.external_reference.length > 0
-      && payment.external_reference.length <= 100;
+      && payment.external_reference.length <= 100
+      && (isGuestReference || isAuthenticated);
     if (!approved) {
       return response.status(402).json({ error: "Mercado Pago no confirmó un pago aprobado por ARS 2.000 para este remito." });
     }
 
-    return response.status(200).json({ approved: true, number: payment.external_reference });
+    return response.status(200).json({
+      approved: true,
+      ...(isGuestReference
+        ? { guestReference: payment.external_reference }
+        : { number: payment.external_reference }),
+    });
   } catch (error) {
     console.error("No se pudo verificar el pago del remito", error);
     return response.status(503).json({ error: error instanceof Error ? error.message : "No se pudo verificar el pago." });

@@ -118,7 +118,14 @@ function HistorialPage() {
   const [movingToTrash, setMovingToTrash] = useState(false);
 
   useEffect(() => {
-    setList([...sampleHistorialInvoices, ...getInvoices()]);
+    const refreshInvoices = () => setList([...sampleHistorialInvoices, ...getInvoices()]);
+    refreshInvoices();
+    window.addEventListener("mf:data-owner-changed", refreshInvoices);
+    window.addEventListener("mf:cloud-data-ready", refreshInvoices);
+    return () => {
+      window.removeEventListener("mf:data-owner-changed", refreshInvoices);
+      window.removeEventListener("mf:cloud-data-ready", refreshInvoices);
+    };
   }, []);
 
   const filtered = useMemo(() => {
