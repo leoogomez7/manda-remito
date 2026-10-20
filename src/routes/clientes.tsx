@@ -396,11 +396,11 @@ function ClientInvoices({ invoices, onDownload }: { invoices: Invoice[]; onDownl
             <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border/40 bg-card/40 p-3 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Total</dt>
-                <dd className="mt-0.5 break-words font-semibold tabular-nums">{formatMoney(invoice.total, invoice.currency)}</dd>
+                <dd className="mt-0.5 wrap-break-word font-semibold tabular-nums">{formatMoney(invoice.total, invoice.currency)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Seña</dt>
-                <dd className="mt-0.5 break-words font-medium tabular-nums">{formatMoney(invoice.deposit, invoice.currency)}</dd>
+                <dd className="mt-0.5 wrap-break-word font-medium tabular-nums">{formatMoney(invoice.deposit, invoice.currency)}</dd>
               </div>
             </dl>
             <Button className="w-full" variant="secondary" onClick={() => onDownload(invoice)}>
