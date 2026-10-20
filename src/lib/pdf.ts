@@ -6,6 +6,49 @@ const FUCHSIA = "#FF00D4";
 const DARK = "#0B0B0F";
 const LIGHT = "#F5F7FA";
 const MUTED = "#9CA3AF";
+const generatedPdfBlobs = new Map<string, Blob>();
+
+function cachePdf(invoiceId: string, blob: Blob) {
+  generatedPdfBlobs.set(invoiceId, blob);
+  if (generatedPdfBlobs.size > 20) {
+    const oldestId = generatedPdfBlobs.keys().next().value;
+    if (oldestId) generatedPdfBlobs.delete(oldestId);
+  }
+}
+
+function downloadPdfBlob(invoice: Invoice, blob: Blob) {
+  const safeClientName = (invoice.client.name || "cliente").replace(/[\\/:*?"<>|]/g, "-").trim();
+  const fileName = `${invoice.number}-${safeClientName || "cliente"}.pdf`;
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.rel = "noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+function openPrintWindow(invoice: Invoice, blob: Blob) {
+  const printWindow = window.open("about:blank", "_blank");
+  if (!printWindow) return false;
+  const url = URL.createObjectURL(blob);
+  printWindow.document.title = `Remito ${invoice.number}`;
+  printWindow.addEventListener("load", () => {
+    window.setTimeout(() => {
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch (error) {
+        console.error("No se pudo abrir el diálogo de impresión", error);
+      }
+    }, 700);
+  }, { once: true });
+  printWindow.location.replace(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+  return true;
+}
 
 // Volvemos la función asíncrona para inyectar dinámicamente las librerías
 async function loadImageDataUrl(url: string): Promise<string> {
@@ -273,59 +316,51 @@ export async function generateInvoicePdf(invoice: Invoice, currentBusinessProfil
 }
 
 export async function downloadInvoicePdf(invoice: Invoice, businessProfile?: BusinessProfile) {
-  const doc = await generateInvoicePdf(invoice, businessProfile);
-  const fileName = `${invoice.number}-${invoice.client.name || "cliente"}.pdf`;
-
-  try {
-    doc.save(fileName);
-  } catch (error) {
-    const blob = doc.output("blob");
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = fileName;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+  let blob = generatedPdfBlobs.get(invoice.id);
+  if (!blob) {
+    const doc = await generateInvoicePdf(invoice, businessProfile);
+    blob = doc.output("blob");
+    cachePdf(invoice.id, blob);
   }
+  downloadPdfBlob(invoice, blob);
+}
+
+export function downloadCachedInvoicePdf(invoice: Invoice) {
+  const blob = generatedPdfBlobs.get(invoice.id);
+  if (!blob) return false;
+  downloadPdfBlob(invoice, blob);
+  return true;
 }
 
 export async function printInvoicePdf(invoice: Invoice, businessProfile?: BusinessProfile) {
-  const doc = await generateInvoicePdf(invoice, businessProfile);
-  const blob = doc.output("blob");
+  // Reservar la ventana antes de esperar la generación evita que el navegador bloquee
+  // la impresión por pérdida de la activación del clic del usuario.
+  const printWindow = window.open("about:blank", "_blank");
+  if (!printWindow) throw new Error("El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes e inténtalo otra vez.");
+
+  let blob = generatedPdfBlobs.get(invoice.id);
+  if (!blob) {
+    const doc = await generateInvoicePdf(invoice, businessProfile);
+    blob = doc.output("blob");
+    cachePdf(invoice.id, blob);
+  }
   const url = URL.createObjectURL(blob);
-
-  const frame = document.createElement("iframe");
-  frame.title = `Imprimir remito ${invoice.number}`;
-  frame.setAttribute("aria-hidden", "true");
-  frame.style.position = "fixed";
-  frame.style.left = "-10000px";
-  frame.style.top = "0";
-  frame.style.width = "100vw";
-  frame.style.height = "100vh";
-  frame.style.pointerEvents = "none";
-  frame.style.border = "0";
-
-  const cleanup = () => {
-    frame.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  frame.onload = () => {
-    frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true });
-    // Let the browser's built-in PDF viewer finish rendering before opening
-    // the print dialog; printing a 1x1 iframe immediately often yields blank pages.
+  printWindow.document.title = `Remito ${invoice.number}`;
+  printWindow.addEventListener("load", () => {
     window.setTimeout(() => {
       try {
-        frame.contentWindow?.focus();
-        frame.contentWindow?.print();
+        printWindow.focus();
+        printWindow.print();
       } catch (error) {
-        cleanup();
         console.error("No se pudo abrir el diálogo de impresión", error);
       }
-    }, 500);
-  };
-  document.body.appendChild(frame);
-  frame.src = url;
+    }, 700);
+  }, { once: true });
+  printWindow.location.replace(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+}
+
+export function printCachedInvoicePdf(invoice: Invoice) {
+  const blob = generatedPdfBlobs.get(invoice.id);
+  return blob ? openPrintWindow(invoice, blob) : false;
 }

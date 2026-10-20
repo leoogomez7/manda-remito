@@ -63,6 +63,13 @@ import {
   saveGuestCheckout,
 } from "@/lib/cloud-sync";
 import { useAppAuth } from "@/lib/auth";
+import { usePlanStatus } from "@/lib/plan-status";
+import {
+  downloadCachedInvoicePdf,
+  downloadInvoicePdf,
+  printCachedInvoicePdf,
+  printInvoicePdf,
+} from "@/lib/pdf";
 import { getSavedClients, mergeClientsWithInvoices } from "@/lib/clients";
 import { cn, PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
@@ -124,6 +131,7 @@ export function NuevaFactura() {
   const navigate = useNavigate();
   const { settleInvoiceId: requestedSettlementId, payment: paymentResult, payment_id: paymentId } = Route.useSearch();
   const { user, getIdToken } = useAppAuth();
+  const { subscription } = usePlanStatus();
   const workingDraftDirty = useRef(false);
   const [form, setForm] = useState<FormState>(() => {
     const draft = requestedSettlementId ? null : loadDraft<FormState>();
@@ -166,6 +174,8 @@ export function NuevaFactura() {
     () => calcTotals(form.items, form.deposit),
     [form.items, form.deposit],
   );
+  const hasActivePlan = Boolean(subscription && Date.parse(subscription.expiresAt) > Date.now());
+  const generationIsFree = discountApplied || hasActivePlan;
 
   useEffect(() => {
     if (!workingDraftDirty.current) return;
@@ -309,20 +319,15 @@ export function NuevaFactura() {
     setConfirmationOpen(false);
     resetForm();
 
-    try {
-      await flushCloudChanges();
-    } catch (error) {
-      console.error("El remito quedó en cola y no se confirmó su sincronización antes del pago", error);
-      toast.error("El remito quedó guardado en este dispositivo, pero no pudimos confirmar su sincronización. Reintenta antes de continuar al pago.");
-      return;
-    }
+    void flushCloudChanges().catch((error) => {
+      console.error("El remito quedó guardado localmente, pero la sincronización sigue pendiente", error);
+      toast.error("El remito quedó guardado en este dispositivo, pero no se pudo sincronizar con la nube.");
+    });
 
     try {
-      // OPTIMIZACIÓN: Carga diferida dinámica del generador de PDF
-      const { downloadInvoicePdf } = await import("@/lib/pdf");
       await downloadInvoicePdf(invoice);
       toast.success(`Remito ${num} generado`, {
-        description: "PDF descargado y guardado en el historial.",
+        description: "El remito quedó en el historial y se inició la descarga del PDF.",
       });
     } catch (error) {
       console.error("Error al generar o descargar PDF", error);
@@ -476,7 +481,6 @@ export function NuevaFactura() {
         }
 
         try {
-          const { downloadInvoicePdf } = await import("@/lib/pdf");
           await downloadInvoicePdf(pendingInvoice);
         } catch (error) {
           console.error("No se pudo descargar el PDF del remito pagado", error);
@@ -595,8 +599,9 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 variant="secondary"
                 onClick={async () => {
                   try {
-                    const { printInvoicePdf } = await import("@/lib/pdf");
-                    await printInvoicePdf(generatedInvoice);
+                    if (!printCachedInvoicePdf(generatedInvoice)) {
+                      await printInvoicePdf(generatedInvoice);
+                    }
                   } catch (error) {
                     console.error("No se pudo abrir la impresión del remito", error);
                     toast.error("No se pudo abrir la ventana de impresión.");
@@ -610,8 +615,9 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 variant="secondary"
                 onClick={async () => {
                   try {
-                    const { downloadInvoicePdf } = await import("@/lib/pdf");
-                    await downloadInvoicePdf(generatedInvoice);
+                    if (!downloadCachedInvoicePdf(generatedInvoice)) {
+                      await downloadInvoicePdf(generatedInvoice);
+                    }
                   } catch (error) {
                     console.error("No se pudo volver a descargar el remito", error);
                     toast.error("No se pudo descargar el PDF. Intentá nuevamente.");
@@ -678,7 +684,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
 
             <div className="rounded-2xl border border-border/60 bg-background/50 p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Totales y datos del remito
+                Datos del remito
               </p>
               <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
                 <div>
@@ -1132,9 +1138,6 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
         >
           <DialogHeader>
             <DialogTitle>Confirma los datos del remito</DialogTitle>
-            <DialogDescription>
-              Los importes del remito corresponden a los conceptos y pagos de tu cliente. Generar el remito cuesta {formatMoney(REMITO_GENERATION_FEE_ARS, "ARS")}; ese cargo es independiente y no modifica el documento.
-            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 rounded-xl border border-border/60 bg-background/50 p-4">
             <Label htmlFor="discount-code">Ingresar código</Label>
@@ -1190,7 +1193,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatMoney(totals.subtotal, form.currency)}</span></div>
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Seña registrada por tu cliente</span><span>{formatMoney(form.deposit, form.currency)}</span></div>
               <div className="flex items-center justify-between"><span className="text-muted-foreground">Saldo pendiente del cliente</span><span>{formatMoney(totals.balance, form.currency)}</span></div>
-              <div className="flex items-center justify-between border-t border-border/50 pt-2 font-semibold"><span>{discountApplied ? "Costo para generar" : "Monto a pagar por remito"}</span><span className="text-(--neon-cyan)">{formatMoney(discountApplied ? 0 : REMITO_GENERATION_FEE_ARS, "ARS")}</span></div>
+              <div className="flex items-center justify-between border-t border-border/50 pt-2 font-semibold"><span>{generationIsFree ? "Costo para generar" : "Monto a pagar por remito"}</span><span className="text-(--neon-cyan)">{formatMoney(generationIsFree ? 0 : REMITO_GENERATION_FEE_ARS, "ARS")}</span></div>
             </div>
           </div>
           <DialogFooter className="gap-2">
@@ -1201,8 +1204,8 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <CreditCard className="mr-2 h-4 w-4" />
               {creatingPayment
                 ? "Preparando pago…"
-                : discountApplied
-                  ? "Confirmar y generar remito gratis"
+                : generationIsFree
+                  ? "Generar remito"
                   : `Pagar ${formatMoney(REMITO_GENERATION_FEE_ARS, "ARS")} y generar remito`}
             </Button>
           </DialogFooter>
