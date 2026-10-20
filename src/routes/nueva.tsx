@@ -232,11 +232,9 @@ export function NuevaFactura() {
     try {
       num = selectedPendingInvoice
         ? getNextSettlementNumber(selectedPendingInvoice)
-        : user?.email
-          ? await nextNumber()
-          : `INV-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+        : await nextNumber();
     } catch (error) {
-      console.error("No se pudo reservar un número de remito en Turso", error);
+      console.error("No se pudo reservar un número único de remito", error);
       toast.error(error instanceof Error ? error.message : "No se pudo conectar con la base de datos. Intentá nuevamente.");
       return;
     }
@@ -764,7 +762,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
       >
         <div>
           <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">
-            Generar remito · {displayNumber}
+            {selectedPendingInvoice ? `Generar remito · ${displayNumber}` : "Generar remito · número aleatorio"}
           </p>
           <h1 className="mt-1 text-3xl font-bold">
             <span className="text-gradient">Generar remito</span>
@@ -1127,7 +1125,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <Receipt className="h-3.5 w-3.5" /> Número del remito
             </p>
             <p className="font-mono text-base text-gradient">{displayNumber}</p>
-            <p className="mt-1">Número asignado al generar el remito.</p>
+            <p className="mt-1">{selectedPendingInvoice ? "Número de esta renovación de cuenta." : "Número aleatorio único asignado al generar el remito."}</p>
           </div>
         </aside>
       </div>

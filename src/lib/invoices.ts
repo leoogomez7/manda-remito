@@ -119,8 +119,7 @@ export async function nextNumber(): Promise<string> {
 }
 
 export function peekNextNumber(): string {
-  const current = Math.max(0, ...getCloudRecords("counters").map((record) => Number(record.value) || 0));
-  return `MF-${String(current + 1).padStart(6, "0")}`;
+  return "Aleatorio";
 }
 
 export function getNextSettlementNumber(invoice: Invoice): string {

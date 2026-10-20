@@ -450,11 +450,14 @@ export function clearCloudSession() {
 }
 
 export async function allocateInvoiceNumber() {
-  const getToken = tokenGetter;
-  const result = await requestCloud<{ number: string }>("POST", { action: "allocate-invoice-number" }, getToken);
-  const parsed = Number(result.number.match(/^MF-(\d+)$/)?.[1]);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) throw new Error("Turso devolvió un número de remito inválido.");
-  applyCloudDelta({ collection: "counters", records: [{ id: "global", value: parsed }] });
+  const response = await fetch("/api/allocate-invoice-number", {
+    method: "POST",
+    cache: "no-store",
+  });
+  const result = await response.json().catch(() => ({})) as { number?: string; error?: string };
+  if (!response.ok || typeof result.number !== "string" || !/^MF-[A-F0-9]{12}$/.test(result.number)) {
+    throw new Error(result.error || "No se pudo asignar un número único de remito.");
+  }
   return result.number;
 }
 

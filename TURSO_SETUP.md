@@ -44,4 +44,4 @@ All database reads and writes go through `api/data.ts` (the project must be depl
 
 The app requires connectivity to Turso to persist changes. Pending writes are kept in memory and retried while the session remains open; do not close/reload the app until a save confirms synchronization. The IndexedDB snapshot is only a startup optimization and can be refreshed from Turso on each device.
 
-Sequential `MF-000001` invoice numbers are allocated atomically by Turso per account. Lettered settlement receipts (`MF-000001-A`, `...-B`) remain attached to their parent number.
+New remitos receive a random `MF-XXXXXXXXXXXX` number reserved atomically in a global Turso registry, shared by signed-in and guest users to prevent duplicate numbers across accounts. Settlement receipts retain their parent's number and get sequential letter suffixes (`-A`, `-B`, and onward).

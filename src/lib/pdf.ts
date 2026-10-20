@@ -30,23 +30,48 @@ function downloadPdfBlob(invoice: Invoice, blob: Blob) {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
-function openPrintWindow(invoice: Invoice, blob: Blob) {
-  const printWindow = window.open("about:blank", "_blank");
-  if (!printWindow) return false;
+function printPdfBlob(invoice: Invoice, blob: Blob) {
   const url = URL.createObjectURL(blob);
-  printWindow.document.title = `Remito ${invoice.number}`;
-  printWindow.addEventListener("load", () => {
+  const frame = document.createElement("iframe");
+  frame.title = `Imprimir remito ${invoice.number}`;
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.position = "fixed";
+  frame.style.left = "-10000px";
+  frame.style.top = "0";
+  frame.style.width = "100vw";
+  frame.style.height = "100vh";
+  frame.style.border = "0";
+
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    frame.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  frame.onload = () => {
+    frame.contentWindow?.addEventListener("afterprint", cleanup, { once: true });
     window.setTimeout(() => {
       try {
+        const printWindow = frame.contentWindow;
+        if (!printWindow) throw new Error("No se pudo cargar el documento para imprimir.");
         printWindow.focus();
         printWindow.print();
       } catch (error) {
         console.error("No se pudo abrir el diálogo de impresión", error);
+        cleanup();
       }
-    }, 700);
-  }, { once: true });
-  printWindow.location.replace(url);
-  window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+    }, 500);
+  };
+  document.body.appendChild(frame);
+  frame.src = url;
+  // Fallback for browsers that do not dispatch afterprint on embedded PDF viewers.
+  window.setTimeout(cleanup, 5 * 60_000);
+}
+
+function printCachedBlob(invoice: Invoice, blob: Blob) {
+  printPdfBlob(invoice, blob);
   return true;
 }
 
@@ -333,34 +358,16 @@ export function downloadCachedInvoicePdf(invoice: Invoice) {
 }
 
 export async function printInvoicePdf(invoice: Invoice, businessProfile?: BusinessProfile) {
-  // Reservar la ventana antes de esperar la generación evita que el navegador bloquee
-  // la impresión por pérdida de la activación del clic del usuario.
-  const printWindow = window.open("about:blank", "_blank");
-  if (!printWindow) throw new Error("El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes e inténtalo otra vez.");
-
   let blob = generatedPdfBlobs.get(invoice.id);
   if (!blob) {
     const doc = await generateInvoicePdf(invoice, businessProfile);
     blob = doc.output("blob");
     cachePdf(invoice.id, blob);
   }
-  const url = URL.createObjectURL(blob);
-  printWindow.document.title = `Remito ${invoice.number}`;
-  printWindow.addEventListener("load", () => {
-    window.setTimeout(() => {
-      try {
-        printWindow.focus();
-        printWindow.print();
-      } catch (error) {
-        console.error("No se pudo abrir el diálogo de impresión", error);
-      }
-    }, 700);
-  }, { once: true });
-  printWindow.location.replace(url);
-  window.setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+  printPdfBlob(invoice, blob);
 }
 
 export function printCachedInvoicePdf(invoice: Invoice) {
   const blob = generatedPdfBlobs.get(invoice.id);
-  return blob ? openPrintWindow(invoice, blob) : false;
+  return blob ? printCachedBlob(invoice, blob) : false;
 }
