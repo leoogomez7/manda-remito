@@ -311,7 +311,10 @@ function ClientesPage() {
       </Dialog>
 
       <Dialog open={remitosClient !== null} onOpenChange={(open) => !open && setRemitosClient(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-4xl">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-4xl"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Remitos de {remitosClient?.name}</DialogTitle>
             <DialogDescription>Descarga un remito directamente desde esta lista.</DialogDescription>
