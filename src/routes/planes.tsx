@@ -24,8 +24,7 @@ function PlanesPage() {
   const navigate = useNavigate();
   const { payment, payment_id: paymentId } = Route.useSearch();
   const { getIdToken } = useAppAuth();
-  const { setSubscription: setSharedSubscription } = usePlanStatus();
-  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const { subscription, setSubscription: setSharedSubscription } = usePlanStatus();
   const [loading, setLoading] = useState(true);
   const [buyingPlan, setBuyingPlan] = useState<PaymentPlanId | null>(null);
   const [promoPlan, setPromoPlan] = useState<PaymentPlanId | null>(null);
@@ -42,7 +41,6 @@ function PlanesPage() {
     });
     const result = await response.json().catch(() => ({})) as { subscription?: Subscription | null; error?: string };
     if (!response.ok) throw new Error(result.error || "No se pudo consultar tu plan.");
-    setSubscription(result.subscription ?? null);
     setSharedSubscription(result.subscription ?? null);
   };
 
@@ -72,7 +70,6 @@ function PlanesPage() {
         const result = await response.json().catch(() => ({})) as { approved?: boolean; subscription?: Subscription; error?: string };
         if (!response.ok || !result.approved) throw new Error(result.error || "No se pudo confirmar el pago.");
         if (!cancelled) {
-          setSubscription(result.subscription ?? null);
           setSharedSubscription(result.subscription ?? null);
           toast.success("Pago aprobado. Tu plan ya está activo.");
         }
@@ -122,7 +119,6 @@ function PlanesPage() {
       });
       const result = await response.json().catch(() => ({})) as { subscription?: Subscription; error?: string };
       if (!response.ok || !result.subscription) throw new Error(result.error || "No se pudo validar el código promocional.");
-      setSubscription(result.subscription);
       setSharedSubscription(result.subscription);
       setPromoPlan(null);
       setPromoCode("");
@@ -147,7 +143,7 @@ function PlanesPage() {
       </div>
 
       {verifying && <div className="mb-5 rounded-xl border border-(--neon-cyan)/30 bg-card/50 p-4 text-sm">Verificando el pago y activando el plan…</div>}
-      {!loading && planIsActive && subscription && (
+      {planIsActive && subscription && (
         <div className="mb-6 flex flex-col gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <BadgeCheck className="h-5 w-5 text-emerald-400" />
