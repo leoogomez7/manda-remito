@@ -8,15 +8,14 @@ import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import { toast } from "sonner";
 import { flushCloudChanges } from "@/lib/cloud-sync";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatMoney, getDrafts, moveDraftToTrash, PAYMENT_LABEL, saveDraft, type Invoice } from "@/lib/invoices";
 
 const sampleDraft: Invoice = {
@@ -273,29 +272,25 @@ function BorradoresPage() {
         </div>
       )}
 
-      <AlertDialog open={draftToDelete !== null} onOpenChange={(open) => !open && setDraftToDelete(null)}>
-        <AlertDialogContent className="border-border/70 bg-background">
-          <AlertDialogCancel aria-label="Cerrar" className="absolute right-4 top-4 h-8 w-8 p-0">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Cerrar</span>
-          </AlertDialogCancel>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 aria-hidden="true" className="h-5 w-5 text-destructive" />
-              Enviar borrador a la papelera
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={draftToDelete !== null} onOpenChange={(open) => !open && setDraftToDelete(null)}>
+        <DialogContent className="border-border/70 bg-background">
+          <DialogHeader>
+            <DialogTitle>Enviar borrador a la papelera</DialogTitle>
+            <DialogDescription>
               El borrador permanecerá en la papelera durante 5 días. Después se eliminará definitivamente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3 sm:space-x-0">
+            <DialogClose asChild>
+              <Button type="button" variant="outline"><X className="h-4 w-4" />Cancelar</Button>
+            </DialogClose>
+            <Button onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Trash2 className="h-4 w-4" />
               Mover a papelera
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BadgeCheck, Download, FileText, Plus, Printer, Search, Trash2 } from "lucide-react";
+import { BadgeCheck, Download, FileText, Plus, Printer, Search, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { IconActionButton } from "@/components/icon-action-button";
@@ -416,19 +416,17 @@ function HistorialPage() {
       <Dialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && !movingToTrash && setInvoiceToDelete(null)}>
         <DialogContent className="border-border/70 bg-background">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trash2 aria-hidden="true" className="h-5 w-5 text-destructive" />
-              Enviar remito a la papelera
-            </DialogTitle>
+            <DialogTitle>Enviar remito a la papelera</DialogTitle>
             <DialogDescription>
               Solo este remito se moverá a la papelera durante 5 días. Los cobros relacionados permanecerán en el historial.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-3 sm:space-x-0">
             <DialogClose asChild>
-              <Button type="button" variant="outline" disabled={movingToTrash}>Cancelar</Button>
+              <Button type="button" variant="outline" disabled={movingToTrash}><X className="h-4 w-4" />Cancelar</Button>
             </DialogClose>
             <Button type="button" disabled={movingToTrash} onClick={() => void confirmDelete()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Trash2 className="h-4 w-4" />
               {movingToTrash ? "Moviendo…" : "Mover a papelera"}
             </Button>
           </DialogFooter>

@@ -1,20 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { CalendarClock, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarClock, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { IconActionButton } from "@/components/icon-action-button";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   formatMoney,
   getTrash,
@@ -176,20 +175,23 @@ function PapeleraPage() {
         </div>
       )}
 
-      <AlertDialog open={entryToDelete !== null} onOpenChange={(open) => !open && setEntryToDelete(null)}>
-        <AlertDialogContent className="border-border/70 bg-background">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar definitivamente</AlertDialogTitle>
-            <AlertDialogDescription>Esta acción no se puede deshacer y eliminará el elemento de la papelera ahora.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmPermanentDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+      <Dialog open={entryToDelete !== null} onOpenChange={(open) => !open && setEntryToDelete(null)}>
+        <DialogContent className="border-border/70 bg-background">
+          <DialogHeader>
+            <DialogTitle>Eliminar definitivamente</DialogTitle>
+            <DialogDescription>Esta acción no se puede deshacer y eliminará el elemento de la papelera ahora.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3 sm:space-x-0">
+            <DialogClose asChild>
+              <Button type="button" variant="outline"><X className="h-4 w-4" />Cancelar</Button>
+            </DialogClose>
+            <Button onClick={confirmPermanentDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Trash2 className="h-4 w-4" />
               Eliminar definitivamente
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

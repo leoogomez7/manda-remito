@@ -8,22 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useAppAuth } from "@/lib/auth";
 import { emptyClient, getSavedClients, mergeClientsWithInvoices, removeClientFromAgenda, sameClient, saveClient, type ClientData } from "@/lib/clients";
 import { getBusinessProfile } from "@/lib/business";
@@ -299,25 +290,25 @@ function ClientesPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={clientToDelete !== null} onOpenChange={(open) => !open && setClientToDelete(null)}>
-        <AlertDialogContent className="border-border/70 bg-background">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Trash2 aria-hidden="true" className="h-5 w-5 text-destructive" />
-              Eliminar cliente de la agenda
-            </AlertDialogTitle>
-            <AlertDialogDescription>
+      <Dialog open={clientToDelete !== null} onOpenChange={(open) => !open && setClientToDelete(null)}>
+        <DialogContent className="border-border/70 bg-background">
+          <DialogHeader>
+            <DialogTitle>Eliminar cliente de la agenda</DialogTitle>
+            <DialogDescription>
               Se quitará a {clientToDelete?.name || "este cliente"} de tu agenda. Los remitos anteriores y sus datos no se eliminarán.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 sm:space-x-0">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-3 sm:space-x-0">
+            <DialogClose asChild>
+              <Button type="button" variant="outline"><X className="h-4 w-4" />Cancelar</Button>
+            </DialogClose>
+            <Button onClick={confirmDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              <Trash2 className="h-4 w-4" />
               Eliminar cliente
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={remitosClient !== null} onOpenChange={(open) => !open && setRemitosClient(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-4xl">
