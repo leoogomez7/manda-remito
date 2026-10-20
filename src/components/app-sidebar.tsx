@@ -1,10 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Archive, BadgeCheck, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users, WalletCards } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -14,7 +13,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import logo from "@/assets/logo.png";
-import { getBusinessProfile, type BusinessProfile } from "@/lib/business";
 import { useAppAuth } from "@/lib/auth";
 import { AUTH_CONFIG } from "@/lib/env";
 import { PAYMENT_PLANS } from "@/lib/plans";
@@ -47,13 +45,8 @@ export function AppSidebar() {
   const { subscription } = usePlanStatus();
   const [authDialog, setAuthDialog] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
-  const [businessProfile, setBusinessProfile] = useState<BusinessProfile>(() => getBusinessProfile());
   const activePlan = PAYMENT_PLANS.find((plan) => plan.id === subscription?.planId);
   const planIsActive = Boolean(subscription && Date.parse(subscription.expiresAt) > Date.now());
-
-  useEffect(() => {
-    setBusinessProfile(getBusinessProfile(user?.email));
-  }, [user?.email]);
 
   const openLoginDialog = () => {
     setAuthDialog(true);
@@ -166,12 +159,6 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
-        <div className="px-2 py-3 text-xs group-data-[collapsible=icon]:hidden">
-          {businessProfile.name && <p className="font-medium text-foreground">{businessProfile.name}</p>}
-          {businessProfile.location && <p className="text-muted-foreground">{businessProfile.location}</p>}
-        </div>
-      </SidebarFooter>
     </Sidebar>
     <Dialog open={authDialog} onOpenChange={setAuthDialog}>
       <DialogContent className="bg-background shadow-2xl sm:max-w-md">

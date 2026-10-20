@@ -12,21 +12,58 @@ const PlanStatusContext = React.createContext<PlanStatusContextValue>({
   setSubscription: () => undefined,
 });
 
+function planCacheKey(email: string | undefined) {
+  return email ? `manda-remito:plan:${email.trim().toLowerCase()}` : null;
+}
+
+function readCachedSubscription(email: string | undefined): PlanSubscription | null {
+  const key = planCacheKey(email);
+  if (!key || typeof window === "undefined") return null;
+  try {
+    const value = window.localStorage.getItem(key);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<PlanSubscription>;
+    if (
+      typeof parsed.planId !== "string" ||
+      typeof parsed.startsAt !== "string" ||
+      typeof parsed.expiresAt !== "string" ||
+      !Number.isFinite(Date.parse(parsed.expiresAt))
+    ) return null;
+    return parsed as PlanSubscription;
+  } catch {
+    return null;
+  }
+}
+
 export function usePlanStatus() {
   return React.useContext(PlanStatusContext);
 }
 
 export function PlanStatusProvider({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, getIdToken, user } = useAppAuth();
-  const [subscription, setSubscription] = React.useState<PlanSubscription | null>(null);
+  const [subscription, setSubscriptionState] = React.useState<PlanSubscription | null>(() => readCachedSubscription(user?.email));
+  const setSubscription = React.useCallback((nextSubscription: PlanSubscription | null) => {
+    setSubscriptionState(nextSubscription);
+    const key = planCacheKey(user?.email);
+    if (!key || typeof window === "undefined") return;
+    try {
+      if (nextSubscription) window.localStorage.setItem(key, JSON.stringify(nextSubscription));
+      else window.localStorage.removeItem(key);
+    } catch {
+      // El caché es opcional: la consulta al servidor sigue siendo la fuente de verdad.
+    }
+  }, [user?.email]);
 
   React.useEffect(() => {
     let cancelled = false;
     if (isLoading) return;
     if (!isAuthenticated) {
-      setSubscription(null);
+      setSubscriptionState(null);
       return;
     }
+
+    // Presenta el último estado conocido inmediatamente mientras se revalida en el servidor.
+    setSubscription(readCachedSubscription(user?.email));
 
     void (async () => {
       try {
@@ -41,12 +78,11 @@ export function PlanStatusProvider({ children }: { children: React.ReactNode }) 
         if (!cancelled) setSubscription(result.subscription ?? null);
       } catch (error) {
         console.error("No se pudo consultar el plan para la navegación", error);
-        if (!cancelled) setSubscription(null);
       }
     })();
 
     return () => { cancelled = true; };
-  }, [isAuthenticated, isLoading, getIdToken, user?.email]);
+  }, [isAuthenticated, isLoading, getIdToken, user?.email, setSubscription]);
 
   return (
     <PlanStatusContext.Provider value={{ subscription, setSubscription }}>

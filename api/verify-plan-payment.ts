@@ -110,7 +110,17 @@ export default async function handler(request: VercelRequest, response: VercelRe
     }
 
     const now = new Date();
-    const startsAt = now;
+    const existingSubscription = await db.execute({
+      sql: "SELECT expires_at FROM plan_subscriptions WHERE user_id = ?",
+      args: [userId],
+    });
+    const currentExpiration = existingSubscription.rows[0]
+      ? new Date(String(existingSubscription.rows[0].expires_at))
+      : null;
+    const hasActivePlan = currentExpiration !== null
+      && Number.isFinite(currentExpiration.getTime())
+      && currentExpiration.getTime() > now.getTime();
+    const startsAt = hasActivePlan ? currentExpiration : now;
     const expiresAt = addMonths(startsAt, months);
     const nowIso = now.toISOString();
     const startsIso = startsAt.toISOString();
