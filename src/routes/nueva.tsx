@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   Banknote,
+  CreditCard,
   Download,
   FilePlus2,
   FileCheck2,
