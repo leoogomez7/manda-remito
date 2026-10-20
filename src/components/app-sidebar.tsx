@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users, WalletCards } from "lucide-react";
+import { Archive, BadgeCheck, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users, WalletCards } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +17,8 @@ import logo from "@/assets/logo.png";
 import { getBusinessProfile, type BusinessProfile } from "@/lib/business";
 import { useAppAuth } from "@/lib/auth";
 import { AUTH_CONFIG } from "@/lib/env";
+import { PAYMENT_PLANS } from "@/lib/plans";
+import { usePlanStatus } from "@/lib/plan-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,9 +44,12 @@ export function AppSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { isMobile, setOpen, setOpenMobile } = useSidebar();
   const { configured, isAuthenticated, login, register, logout, user } = useAppAuth();
+  const { subscription } = usePlanStatus();
   const [authDialog, setAuthDialog] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile>(() => getBusinessProfile());
+  const activePlan = PAYMENT_PLANS.find((plan) => plan.id === subscription?.planId);
+  const planIsActive = Boolean(subscription && Date.parse(subscription.expiresAt) > Date.now());
 
   useEffect(() => {
     setBusinessProfile(getBusinessProfile(user?.email));
@@ -91,6 +96,19 @@ export function AppSidebar() {
             </p>
             <p className="mt-1 truncate text-xs font-medium text-foreground" title={user.email}>
               {user.email}
+            </p>
+          </div>
+        )}
+        {isAuthenticated && planIsActive && subscription && (
+          <div className="mx-3 mb-2 rounded-xl border border-emerald-400/30 bg-emerald-500/5 px-3 py-2.5 group-data-[collapsible=icon]:hidden">
+            <div className="flex items-center gap-2">
+              <BadgeCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs font-semibold text-emerald-300">
+                Plan {activePlan?.name ?? subscription.planId} activo
+              </p>
+            </div>
+            <p className="mt-1 pl-6 text-[11px] text-muted-foreground">
+              Vence el {new Date(subscription.expiresAt).toLocaleDateString("es-AR")}
             </p>
           </div>
         )}

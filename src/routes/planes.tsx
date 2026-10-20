@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAppAuth } from "@/lib/auth";
+import { usePlanStatus } from "@/lib/plan-status";
 import { PAYMENT_PLANS, formatPlanPrice, type PaymentPlanId } from "@/lib/plans";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
 
@@ -23,6 +24,7 @@ function PlanesPage() {
   const navigate = useNavigate();
   const { payment, payment_id: paymentId } = Route.useSearch();
   const { getIdToken } = useAppAuth();
+  const { setSubscription: setSharedSubscription } = usePlanStatus();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [buyingPlan, setBuyingPlan] = useState<PaymentPlanId | null>(null);
@@ -41,6 +43,7 @@ function PlanesPage() {
     const result = await response.json().catch(() => ({})) as { subscription?: Subscription | null; error?: string };
     if (!response.ok) throw new Error(result.error || "No se pudo consultar tu plan.");
     setSubscription(result.subscription ?? null);
+    setSharedSubscription(result.subscription ?? null);
   };
 
   useEffect(() => {
@@ -70,6 +73,7 @@ function PlanesPage() {
         if (!response.ok || !result.approved) throw new Error(result.error || "No se pudo confirmar el pago.");
         if (!cancelled) {
           setSubscription(result.subscription ?? null);
+          setSharedSubscription(result.subscription ?? null);
           toast.success("Pago aprobado. Tu plan ya está activo.");
         }
       } catch (error) {
@@ -119,6 +123,7 @@ function PlanesPage() {
       const result = await response.json().catch(() => ({})) as { subscription?: Subscription; error?: string };
       if (!response.ok || !result.subscription) throw new Error(result.error || "No se pudo validar el código promocional.");
       setSubscription(result.subscription);
+      setSharedSubscription(result.subscription);
       setPromoPlan(null);
       setPromoCode("");
       toast.success("Código válido. Tu plan quedó activo gratis durante toda su vigencia.");

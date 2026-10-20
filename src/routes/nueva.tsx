@@ -651,31 +651,55 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
                 <p className="mt-2 text-lg font-semibold">
                   {generatedInvoice.client.name || "Cliente sin nombre"}
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  {generatedInvoice.client.email || "Sin correo"}
-                </p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Fecha de emisión
-                </p>
-                <p className="mt-2 text-sm">
-                  {new Date(generatedInvoice.createdAt).toLocaleDateString("es-AR")}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Moneda
-                </p>
-                <p className="mt-2 text-sm">{generatedInvoice.currency}</p>
-              </div>
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">Correo electrónico</dt>
+                  <dd className="mt-1 wrap-break-word">{generatedInvoice.client.email || "Sin correo"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Celular</dt>
+                  <dd className="mt-1">{generatedInvoice.client.phone || "Sin celular"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">CUIT</dt>
+                  <dd className="mt-1">{generatedInvoice.client.cuit || "Sin CUIT"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Domicilio</dt>
+                  <dd className="mt-1">{generatedInvoice.client.address || "Sin domicilio"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Código postal</dt>
+                  <dd className="mt-1">{generatedInvoice.client.zip || "Sin código postal"}</dd>
+                </div>
+              </dl>
             </div>
 
             <div className="rounded-2xl border border-border/60 bg-background/50 p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Totales
+                Totales y datos del remito
               </p>
-              <div className="mt-3 space-y-2 text-sm">
+              <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-muted-foreground">Fecha de emisión</dt>
+                  <dd className="mt-1">{new Date(`${generatedInvoice.issueDate}T00:00:00`).toLocaleDateString("es-AR")}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Fecha estimada de entrega</dt>
+                  <dd className="mt-1">{generatedInvoice.deliveryDate ? new Date(`${generatedInvoice.deliveryDate}T00:00:00`).toLocaleDateString("es-AR") : "Sin fecha"}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Tipo de pago</dt>
+                  <dd className="mt-1">{PAYMENT_LABEL[generatedInvoice.paymentMethod]}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Moneda</dt>
+                  <dd className="mt-1">{generatedInvoice.currency}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-5 space-y-2 border-t border-border/40 pt-4 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span>{formatMoney(generatedInvoice.subtotal, generatedInvoice.currency)}</span>

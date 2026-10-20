@@ -16,6 +16,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAppAuth } from "@/lib/auth";
 import { bootstrapCloudData, clearCloudSession, loadCachedCloudSnapshot } from "@/lib/cloud-sync";
+import { PAYMENT_PLANS } from "@/lib/plans";
+import { PlanStatusProvider, usePlanStatus } from "@/lib/plan-status";
 
 function NotFoundComponent() {
   return (
@@ -133,20 +135,22 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <CloudDataBootstrap>
-          <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <AppHeader />
-                <main className="min-w-0 flex-1">
-                  <Outlet />
-                </main>
+        <PlanStatusProvider>
+          <CloudDataBootstrap>
+            <SidebarProvider>
+              <div className="flex min-h-screen w-full">
+                <AppSidebar />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <AppHeader />
+                  <main className="min-w-0 flex-1">
+                    <Outlet />
+                  </main>
+                </div>
               </div>
-            </div>
-            <Toaster theme="dark" position="top-right" richColors />
-          </SidebarProvider>
-        </CloudDataBootstrap>
+              <Toaster theme="dark" position="top-right" richColors />
+            </SidebarProvider>
+          </CloudDataBootstrap>
+        </PlanStatusProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
@@ -215,7 +219,10 @@ function CloudDataBootstrap({ children }: { children: React.ReactNode }) {
 function AppHeader() {
   const { state } = useSidebar();
   const { isAuthenticated, user } = useAppAuth();
+  const { subscription } = usePlanStatus();
   const sidebarCollapsed = state === "collapsed";
+  const activePlan = PAYMENT_PLANS.find((plan) => plan.id === subscription?.planId);
+  const planIsActive = Boolean(subscription && Date.parse(subscription.expiresAt) > Date.now());
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border/60 bg-background/60 px-4 backdrop-blur">
@@ -223,11 +230,17 @@ function AppHeader() {
       <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Manda Remito</div>
       {sidebarCollapsed && isAuthenticated && user?.email && (
         <div className="ml-auto flex min-w-0 items-center gap-2">
+          {planIsActive && subscription && (
+            <div className="flex min-w-0 flex-col rounded-full border border-emerald-400/30 bg-emerald-500/5 px-3 py-1 text-xs">
+              <span className="truncate font-medium text-emerald-300">Plan {activePlan?.name ?? subscription.planId} activo</span>
+              <span className="truncate text-[10px] text-muted-foreground">Hasta el {new Date(subscription.expiresAt).toLocaleDateString("es-AR")}</span>
+            </div>
+          )}
           <Link
             to="/planes"
             className="inline-flex shrink-0 items-center rounded-full border border-(--neon-fuchsia)/30 bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-(--neon-fuchsia)/60 hover:bg-(--neon-fuchsia)/10"
           >
-            Comprar plan
+            {planIsActive ? "Extender plan" : "Comprar plan"}
           </Link>
           <div className="flex min-w-0 items-center gap-2 rounded-full border border-(--neon-cyan)/20 bg-background/70 px-3 py-1.5 text-xs">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" aria-hidden="true" />
