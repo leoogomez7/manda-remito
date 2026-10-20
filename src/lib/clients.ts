@@ -7,16 +7,17 @@ export interface SavedClient {
   id: string;
   createdAt: string;
   client: ClientData;
+  deletedAt?: string;
 }
 
 export function getSavedClients(userEmail?: string): SavedClient[] {
   void userEmail;
-  return getCloudRecords("clients") as unknown as SavedClient[];
+  return (getCloudRecords("clients") as unknown as SavedClient[]).filter((item) => !item.deletedAt);
 }
 
 export function saveClient(client: ClientData, userEmail?: string, id?: string) {
   void userEmail;
-  const clients = getSavedClients(userEmail);
+  const clients = getCloudRecords("clients") as unknown as SavedClient[];
   const existing = id
     ? clients.find((item) => item.id === id)
     : clients.find((item) => sameClient(item.client, client));
@@ -34,12 +35,29 @@ export function saveClient(client: ClientData, userEmail?: string, id?: string) 
 
 export function mergeClientsWithInvoices(savedClients: SavedClient[], invoices: Invoice[]): ClientData[] {
   const clients = savedClients.map((item) => item.client);
+  const deletedClients = (getCloudRecords("clients") as unknown as SavedClient[])
+    .filter((item) => item.deletedAt)
+    .map((item) => item.client);
   for (const invoice of invoices) {
-    if (!clients.some((client) => sameClient(client, invoice.client))) {
+    if (!clients.some((client) => sameClient(client, invoice.client)) &&
+      !deletedClients.some((client) => sameClient(client, invoice.client))) {
       clients.push(invoice.client);
     }
   }
   return clients;
+}
+
+export function removeClientFromAgenda(client: ClientData, userEmail?: string): void {
+  void userEmail;
+  const savedClients = getCloudRecords("clients") as unknown as SavedClient[];
+  const existing = savedClients.find((item) => sameClient(item.client, client));
+  const deletedClient: SavedClient = {
+    id: existing?.id ?? crypto.randomUUID(),
+    createdAt: existing?.createdAt ?? new Date().toISOString(),
+    client: { ...client },
+    deletedAt: new Date().toISOString(),
+  };
+  void queueCloudChange({ collection: "clients", records: [deletedClient as unknown as Record<string, unknown>] });
 }
 
 export function sameClient(left: ClientData, right: ClientData): boolean {

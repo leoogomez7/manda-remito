@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Archive, FileText, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Archive, FileText, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { IconActionButton } from "@/components/icon-action-button";
 import { Input } from "@/components/ui/input";
@@ -275,8 +275,15 @@ function BorradoresPage() {
 
       <AlertDialog open={draftToDelete !== null} onOpenChange={(open) => !open && setDraftToDelete(null)}>
         <AlertDialogContent className="border-border/70 bg-background">
+          <AlertDialogCancel aria-label="Cerrar" className="absolute right-4 top-4 h-8 w-8 p-0">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Cerrar</span>
+          </AlertDialogCancel>
           <AlertDialogHeader>
-            <AlertDialogTitle>Enviar borrador a la papelera</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 aria-hidden="true" className="h-5 w-5 text-destructive" />
+              Enviar borrador a la papelera
+            </AlertDialogTitle>
             <AlertDialogDescription>
               El borrador permanecerá en la papelera durante 5 días. Después se eliminará definitivamente.
             </AlertDialogDescription>

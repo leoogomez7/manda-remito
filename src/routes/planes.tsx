@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { BadgeCheck, CalendarClock, Crown, Gem, Medal, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAppAuth } from "@/lib/auth";
 import { PAYMENT_PLANS, formatPlanPrice, type PaymentPlanId } from "@/lib/plans";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -25,6 +26,9 @@ function PlanesPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [buyingPlan, setBuyingPlan] = useState<PaymentPlanId | null>(null);
+  const [promoPlan, setPromoPlan] = useState<PaymentPlanId | null>(null);
+  const [promoCode, setPromoCode] = useState("");
+  const [redeemingPlan, setRedeemingPlan] = useState<PaymentPlanId | null>(null);
   const [verifying, setVerifying] = useState(false);
 
   const loadSubscription = async () => {
@@ -101,6 +105,30 @@ function PlanesPage() {
     }
   };
 
+  const redeemPromoCode = async (planId: PaymentPlanId) => {
+    setRedeemingPlan(planId);
+    try {
+      const token = await getIdToken();
+      if (!token) throw new Error("Inicia sesión para activar un plan.");
+      const response = await fetch("/api/redeem-plan-promo", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ planId, code: promoCode }),
+        cache: "no-store",
+      });
+      const result = await response.json().catch(() => ({})) as { subscription?: Subscription; error?: string };
+      if (!response.ok || !result.subscription) throw new Error(result.error || "No se pudo validar el código promocional.");
+      setSubscription(result.subscription);
+      setPromoPlan(null);
+      setPromoCode("");
+      toast.success("Código válido. Tu plan quedó activo gratis durante toda su vigencia.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo validar el código promocional.");
+    } finally {
+      setRedeemingPlan(null);
+    }
+  };
+
   const currentPlan = PAYMENT_PLANS.find((plan) => plan.id === subscription?.planId);
   const planIsActive = Boolean(subscription && Date.parse(subscription.expiresAt) > Date.now());
   const planIcons = [Medal, Gem, Crown, Sparkles] as const;
@@ -152,6 +180,33 @@ function PlanesPage() {
               <Button className="mt-6 w-full" disabled={loading || verifying || buyingPlan !== null} onClick={() => void buyPlan(plan.id)}>
                 {buyingPlan === plan.id ? "Preparando pago…" : isCurrent ? "Comprar nuevamente" : "Elegir plan"}
               </Button>
+              <Button
+                type="button"
+                variant="link"
+                className="mt-2 h-auto w-full whitespace-normal text-sm text-(--neon-cyan)"
+                disabled={redeemingPlan !== null}
+                onClick={() => {
+                  setPromoPlan(promoPlan === plan.id ? null : plan.id);
+                  setPromoCode("");
+                }}
+              >
+                Ingresar código promocional
+              </Button>
+              {promoPlan === plan.id && (
+                <form className="mt-2 space-y-2" onSubmit={(event) => { event.preventDefault(); void redeemPromoCode(plan.id); }}>
+                  <Input
+                    value={promoCode}
+                    onChange={(event) => setPromoCode(event.target.value)}
+                    placeholder="Código promocional"
+                    aria-label={`Código promocional para el plan ${plan.name}`}
+                    autoComplete="off"
+                    required
+                  />
+                  <Button type="submit" variant="secondary" className="w-full" disabled={redeemingPlan !== null || !promoCode.trim()}>
+                    {redeemingPlan === plan.id ? "Validando código…" : "Aplicar código"}
+                  </Button>
+                </form>
+              )}
             </article>
           );
         })}

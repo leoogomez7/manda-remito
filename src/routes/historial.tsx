@@ -396,9 +396,11 @@ function HistorialPage() {
                     );
                   })()}
 
-                  <IconActionButton label={`Enviar ${i.number} a papelera`} tone="danger" onClick={() => handleDelete(i.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </IconActionButton>
+                  {!isSampleInvoice(i) && (
+                    <IconActionButton label={`Enviar ${i.number} a papelera`} tone="danger" onClick={() => handleDelete(i.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
+                  )}
                 </div>
               </div>
             ))}
@@ -409,12 +411,15 @@ function HistorialPage() {
       <Dialog open={invoiceToDelete !== null} onOpenChange={(open) => !open && !movingToTrash && setInvoiceToDelete(null)}>
         <DialogContent className="border-border/70 bg-background">
           <DialogHeader>
-            <DialogTitle>Enviar remito a la papelera</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 aria-hidden="true" className="h-5 w-5 text-destructive" />
+              Enviar remito a la papelera
+            </DialogTitle>
             <DialogDescription>
               Solo este remito se moverá a la papelera durante 5 días. Los cobros relacionados permanecerán en el historial.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-3 sm:space-x-0">
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={movingToTrash}>Cancelar</Button>
             </DialogClose>

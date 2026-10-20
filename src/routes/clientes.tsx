@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Download, Eye, Pencil, Plus, Search, Users, Save, X } from "lucide-react";
+import { Download, Eye, Pencil, Plus, Search, Users, Save, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { IconActionButton } from "@/components/icon-action-button";
@@ -14,8 +14,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAppAuth } from "@/lib/auth";
-import { emptyClient, getSavedClients, mergeClientsWithInvoices, sameClient, saveClient, type ClientData } from "@/lib/clients";
+import { emptyClient, getSavedClients, mergeClientsWithInvoices, removeClientFromAgenda, sameClient, saveClient, type ClientData } from "@/lib/clients";
 import { getBusinessProfile } from "@/lib/business";
 import { formatMoney, getInvoices, saveInvoices, type Currency, type Invoice } from "@/lib/invoices";
 import { PAGE_CONTAINER_CLASS } from "@/lib/utils";
@@ -38,6 +48,7 @@ function ClientesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [query, setQuery] = useState("");
   const [clientDialogOpen, setClientDialogOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<ClientData | null>(null);
   const [remitosClient, setRemitosClient] = useState<ClientData | null>(null);
   const [formClient, setFormClient] = useState<ClientData>(emptyClient);
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
@@ -98,6 +109,14 @@ function ClientesPage() {
     setClientDialogOpen(false);
     setEditingClient(null);
     toast.success(editingClient ? "Datos del cliente actualizados" : "Cliente guardado");
+  };
+
+  const confirmDeleteClient = () => {
+    if (!clientToDelete) return;
+    removeClientFromAgenda(clientToDelete, user?.email);
+    setSavedClients(getSavedClients(user?.email));
+    setClientToDelete(null);
+    toast.success("Cliente eliminado de la agenda. Sus remitos anteriores se conservan.");
   };
 
   const downloadInvoice = async (invoice: Invoice) => {
@@ -198,6 +217,9 @@ function ClientesPage() {
                           <IconActionButton label="Editar" onClick={() => openEditClient(client)}>
                             <Pencil className="h-4 w-4" />
                           </IconActionButton>
+                          <IconActionButton label="Eliminar cliente" tone="danger" onClick={() => setClientToDelete(client)}>
+                            <Trash2 className="h-4 w-4" />
+                          </IconActionButton>
                         </div>
                       </td>
                     </tr>
@@ -237,6 +259,9 @@ function ClientesPage() {
                     <IconActionButton label="Editar" onClick={() => openEditClient(client)}>
                       <Pencil className="h-4 w-4" />
                     </IconActionButton>
+                    <IconActionButton label="Eliminar cliente" tone="danger" onClick={() => setClientToDelete(client)}>
+                      <Trash2 className="h-4 w-4" />
+                    </IconActionButton>
                   </div>
                 </article>
               );
@@ -246,7 +271,13 @@ function ClientesPage() {
       )}
 
       <Dialog open={clientDialogOpen} onOpenChange={setClientDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl"
+          onOpenAutoFocus={(event) => {
+            // Keep mobile browsers from opening the keyboard before the user picks a field.
+            event.preventDefault();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{editingClient ? "Editar cliente" : "Nuevo cliente"}</DialogTitle>
             <DialogDescription>
@@ -257,7 +288,7 @@ function ClientesPage() {
           </DialogHeader>
           <form className="space-y-5" onSubmit={handleSaveClient}>
             <ClientFields client={formClient} onChange={setFormClient} />
-            <DialogFooter>
+            <DialogFooter className="gap-3 sm:space-x-0">
               <Button type="button" variant="outline" onClick={() => setClientDialogOpen(false)}><X className="mr-2 h-4 w-4" />Cancelar</Button>
               <Button type="submit">
                 <Save className="mr-2 h-4 w-4" />
@@ -267,6 +298,26 @@ function ClientesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={clientToDelete !== null} onOpenChange={(open) => !open && setClientToDelete(null)}>
+        <AlertDialogContent className="border-border/70 bg-background">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 aria-hidden="true" className="h-5 w-5 text-destructive" />
+              Eliminar cliente de la agenda
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Se quitará a {clientToDelete?.name || "este cliente"} de tu agenda. Los remitos anteriores y sus datos no se eliminarán.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 sm:space-x-0">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteClient} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Eliminar cliente
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={remitosClient !== null} onOpenChange={(open) => !open && setRemitosClient(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-4xl">
@@ -297,7 +348,7 @@ function ClientFields({ client, onChange }: { client: ClientData; onChange: (cli
   const setField = (field: keyof ClientData, value: string) => onChange({ ...client, [field]: value });
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="space-y-2 sm:col-span-2"><Label htmlFor="client-name">Nombre / Empresa</Label><Input id="client-name" autoFocus required value={client.name} onChange={(event) => setField("name", event.target.value)} placeholder="Acme S.A." /></div>
+      <div className="space-y-2 sm:col-span-2"><Label htmlFor="client-name">Nombre / Empresa</Label><Input id="client-name" required value={client.name} onChange={(event) => setField("name", event.target.value)} placeholder="Acme S.A." /></div>
       <div className="space-y-2"><Label htmlFor="client-email">Correo electrónico</Label><Input id="client-email" type="email" value={client.email} onChange={(event) => setField("email", event.target.value)} placeholder="cliente@empresa.com" /></div>
       <div className="space-y-2"><Label htmlFor="client-phone">Celular</Label><Input id="client-phone" type="tel" value={client.phone} onChange={(event) => setField("phone", event.target.value)} placeholder="11 1234-5678" /></div>
       <div className="space-y-2"><Label htmlFor="client-cuit">CUIT</Label><Input id="client-cuit" value={client.cuit} onChange={(event) => setField("cuit", event.target.value)} placeholder="20-12345678-9" /></div>
