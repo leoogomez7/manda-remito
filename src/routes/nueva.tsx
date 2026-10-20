@@ -3,9 +3,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
   Banknote,
-  CreditCard,
   Download,
   FilePlus2,
+  FileCheck2,
   House,
   Landmark,
   Plus,
@@ -1201,7 +1201,7 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
               <ArrowLeft className="mr-2 h-4 w-4" /> Seguir editando
             </Button>
             <Button type="button" disabled={creatingPayment} onClick={() => void confirmAndPay()}>
-              <CreditCard className="mr-2 h-4 w-4" />
+              <FileCheck2 className="mr-2 h-4 w-4" />
               {creatingPayment
                 ? "Preparando pago…"
                 : generationIsFree

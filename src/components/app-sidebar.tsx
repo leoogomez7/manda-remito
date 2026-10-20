@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useState } from "react";
-import { Archive, BadgeCheck, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, Trash2, UserRound, UserPlus, Users, WalletCards } from "lucide-react";
+import { Archive, BadgeCheck, LayoutDashboard, FileCheck, FilePlus2, LogOut, Mail, ShieldCheck, Trash2, UserRound, UserPlus, Users, WalletCards } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -84,8 +84,8 @@ export function AppSidebar() {
       <SidebarContent>
         {isAuthenticated && user?.email && (
           <div className="mx-3 mb-1 mt-3 rounded-xl border border-(--neon-cyan)/20 bg-linear-to-r from-(--neon-cyan)/10 via-background/70 to-(--neon-fuchsia)/10 px-3 py-2.5 shadow-[0_0_18px_rgba(0,229,255,0.06)] group-data-[collapsible=icon]:hidden">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-(--neon-cyan)">
-              Sesión activa
+            <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--neon-cyan)">
+              <ShieldCheck className="h-3 w-3" /> Sesión activa
             </p>
             <p className="mt-1 truncate text-xs font-medium text-foreground" title={user.email}>
               {user.email}
