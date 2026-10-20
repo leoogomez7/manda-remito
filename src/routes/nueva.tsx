@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowLeft,
   Banknote,
   CreditCard,
   Download,
@@ -1101,7 +1102,10 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
       </div>
 
       <Dialog open={confirmationOpen} onOpenChange={(open) => !creatingPayment && setConfirmationOpen(open)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto border-border/70 bg-background sm:max-w-2xl"
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Confirma los datos del remito</DialogTitle>
             <DialogDescription>
@@ -1167,9 +1171,10 @@ const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
           </div>
           <DialogFooter className="gap-2">
             <Button type="button" variant="secondary" disabled={creatingPayment} onClick={() => setConfirmationOpen(false)}>
-              Seguir editando
+              <ArrowLeft className="mr-2 h-4 w-4" /> Seguir editando
             </Button>
             <Button type="button" disabled={creatingPayment} onClick={() => void confirmAndPay()}>
+              <CreditCard className="mr-2 h-4 w-4" />
               {creatingPayment
                 ? "Preparando pago…"
                 : discountApplied

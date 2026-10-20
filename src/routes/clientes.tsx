@@ -350,16 +350,51 @@ function ClientFields({ client, onChange }: { client: ClientData; onChange: (cli
 }
 
 function ClientInvoices({ invoices, onDownload }: { invoices: Invoice[]; onDownload: (invoice: Invoice) => void }) {
+  const [search, setSearch] = useState("");
   if (!invoices.length) {
     return <p className="rounded-xl border border-border/60 p-6 text-center text-sm text-muted-foreground">Este cliente todavía no tiene remitos emitidos.</p>;
   }
+  const term = search.trim().toLocaleLowerCase("es-AR");
+  const filteredInvoices = invoices.filter((invoice) => {
+    if (!term) return true;
+    const date = new Date(`${invoice.issueDate || invoice.createdAt.slice(0, 10)}T00:00:00`);
+    const dateLabel = date.toLocaleDateString("es-AR");
+    const searchableValues = [
+      invoice.number,
+      invoice.client.name,
+      invoice.issueDate,
+      invoice.createdAt,
+      dateLabel,
+      String(invoice.total),
+      formatMoney(invoice.total, invoice.currency),
+      String(invoice.deposit),
+      formatMoney(invoice.deposit, invoice.currency),
+    ];
+    return searchableValues.some((value) => value.toLocaleLowerCase("es-AR").includes(term));
+  });
   return (
-    <div>
+    <div className="space-y-3">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Buscar por remito, fecha, total o seña..."
+          aria-label="Buscar remitos del cliente"
+          className="pl-9"
+        />
+      </div>
+      {filteredInvoices.length === 0 ? (
+        <p className="rounded-xl border border-border/60 p-6 text-center text-sm text-muted-foreground">
+          No se encontraron remitos que coincidan con “{search.trim()}”.
+        </p>
+      ) : (
+      <>
       <div className="hidden overflow-x-auto rounded-xl border border-border/60 md:block">
         <table className="w-full min-w-150 text-sm">
           <thead className="bg-background/60"><tr className="text-xs uppercase text-muted-foreground"><th className="px-4 py-3 text-left">Número</th><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Seña</th><th className="px-4 py-3">PDF</th></tr></thead>
           <tbody>
-            {invoices.map((invoice) => (
+            {filteredInvoices.map((invoice) => (
               <tr key={invoice.id} className="border-t border-border/40">
                 <td className="px-4 py-3 font-mono">{invoice.number}</td>
                 <td className="px-4 py-3 text-center text-muted-foreground">{new Date(`${invoice.issueDate}T00:00:00`).toLocaleDateString("es-AR")}</td>
@@ -373,7 +408,7 @@ function ClientInvoices({ invoices, onDownload }: { invoices: Invoice[]; onDownl
       </div>
 
       <div className="space-y-3 md:hidden">
-        {invoices.map((invoice) => (
+        {filteredInvoices.map((invoice) => (
           <article key={invoice.id} className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-4">
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0">
@@ -400,6 +435,8 @@ function ClientInvoices({ invoices, onDownload }: { invoices: Invoice[]; onDownl
           </article>
         ))}
       </div>
+      </>
+      )}
     </div>
   );
 }
