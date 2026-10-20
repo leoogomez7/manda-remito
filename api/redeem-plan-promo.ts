@@ -3,7 +3,6 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 type PlanId = "bronze" | "silver" | "gold" | "platinum";
-const PROMO_CODE = "GRATIS2026";
 const PLANS: Record<PlanId, { months: number }> = {
   bronze: { months: 1 },
   silver: { months: 3 },
@@ -61,7 +60,11 @@ export default async function handler(request: VercelRequest, response: VercelRe
     if (typeof planId !== "string" || !Object.prototype.hasOwnProperty.call(PLANS, planId)) {
       return response.status(400).json({ error: "El plan seleccionado no es válido." });
     }
-    if (typeof body?.code !== "string" || body.code.trim().toUpperCase() !== PROMO_CODE) {
+    const configuredCode = process.env.GRATIS2026?.trim();
+    if (!configuredCode) {
+      return response.status(503).json({ error: "La variable de entorno GRATIS2026 no está configurada en este deployment." });
+    }
+    if (typeof body?.code !== "string" || body.code.trim().toUpperCase() !== configuredCode.toUpperCase()) {
       return response.status(400).json({ error: "El código promocional no es válido." });
     }
 
@@ -85,7 +88,7 @@ export default async function handler(request: VercelRequest, response: VercelRe
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET plan_id = excluded.plan_id, starts_at = excluded.starts_at,
         expires_at = excluded.expires_at, payment_id = excluded.payment_id, updated_at = excluded.updated_at`,
-      args: [userId, planId, startsIso, expiresIso, `promo:${PROMO_CODE}`, startsIso],
+      args: [userId, planId, startsIso, expiresIso, `promo:${configuredCode}`, startsIso],
     });
 
     return response.status(200).json({
