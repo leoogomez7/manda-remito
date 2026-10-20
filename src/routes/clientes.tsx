@@ -363,21 +363,67 @@ function ClientInvoices({ invoices, onDownload }: { invoices: Invoice[]; onDownl
     return <p className="rounded-xl border border-border/60 p-6 text-center text-sm text-muted-foreground">Este cliente todavía no tiene remitos emitidos.</p>;
   }
   return (
-    <div className="overflow-x-auto rounded-xl border border-border/60">
-      <table className="w-full min-w-150 text-sm">
-        <thead className="bg-background/60"><tr className="text-xs uppercase text-muted-foreground"><th className="px-4 py-3 text-left">Número</th><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Seña</th><th className="px-4 py-3">PDF</th></tr></thead>
-        <tbody>
-          {invoices.map((invoice) => (
-            <tr key={invoice.id} className="border-t border-border/40">
-              <td className="px-4 py-3 font-mono">{invoice.number}</td>
-              <td className="px-4 py-3 text-center text-muted-foreground">{new Date(`${invoice.issueDate}T00:00:00`).toLocaleDateString("es-AR")}</td>
-              <td className="px-4 py-3 text-center font-semibold">{formatMoney(invoice.total, invoice.currency)}</td>
-              <td className="px-4 py-3 text-center">{formatMoney(invoice.deposit, invoice.currency)}</td>
-              <td className="px-4 py-3 text-center"><Button size="sm" variant="secondary" onClick={() => onDownload(invoice)}><Download className="mr-2 h-4 w-4" />Descargar</Button></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <div className="hidden overflow-x-auto rounded-xl border border-border/60 md:block">
+        <table className="w-full min-w-150 text-sm">
+          <thead className="bg-background/60"><tr className="text-xs uppercase text-muted-foreground"><th className="px-4 py-3 text-left">Número</th><th className="px-4 py-3">Fecha</th><th className="px-4 py-3">Total</th><th className="px-4 py-3">Seña</th><th className="px-4 py-3">PDF</th></tr></thead>
+          <tbody>
+            {invoices.map((invoice) => (
+              <tr key={invoice.id} className="border-t border-border/40">
+                <td className="px-4 py-3 font-mono">{invoice.number}</td>
+                <td className="px-4 py-3 text-center text-muted-foreground">{new Date(`${invoice.issueDate}T00:00:00`).toLocaleDateString("es-AR")}</td>
+                <td className="px-4 py-3 text-center font-semibold">{formatMoney(invoice.total, invoice.currency)}</td>
+                <td className="px-4 py-3 text-center">{formatMoney(invoice.deposit, invoice.currency)}</td>
+                <td className="px-4 py-3 text-center"><Button size="sm" variant="secondary" onClick={() => onDownload(invoice)}><Download className="mr-2 h-4 w-4" />Descargar</Button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {invoices.map((invoice) => (
+          <article key={invoice.id} className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-4">
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="break-all font-mono text-sm font-semibold text-(--neon-cyan)">{invoice.number}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {new Date(`${invoice.issueDate || invoice.createdAt.slice(0, 10)}T00:00:00`).toLocaleDateString("es-AR")}
+                </p>
+              </div>
+              <InvoiceStatus status={invoice.status} />
+            </div>
+            <dl className="grid grid-cols-2 gap-3 rounded-lg border border-border/40 bg-card/40 p-3 text-sm">
+              <div>
+                <dt className="text-xs text-muted-foreground">Total</dt>
+                <dd className="mt-0.5 break-words font-semibold tabular-nums">{formatMoney(invoice.total, invoice.currency)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Seña</dt>
+                <dd className="mt-0.5 break-words font-medium tabular-nums">{formatMoney(invoice.deposit, invoice.currency)}</dd>
+              </div>
+            </dl>
+            <Button className="w-full" variant="secondary" onClick={() => onDownload(invoice)}>
+              <Download className="mr-2 h-4 w-4" /> Descargar PDF
+            </Button>
+          </article>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function InvoiceStatus({ status }: { status: Invoice["status"] }) {
+  const isPaid = status === "emitida";
+  const isPending = status === "pendiente";
+  const classes = isPaid
+    ? "bg-emerald-500/10 text-emerald-300"
+    : isPending
+      ? "bg-amber-500/10 text-amber-300"
+      : "bg-muted text-muted-foreground";
+  return (
+    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium ${classes}`}>
+      {isPaid ? "Saldado" : isPending ? "Pendiente" : "Borrador"}
+    </span>
   );
 }
