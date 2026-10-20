@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BadgeCheck, Download, FileText, Printer, Search, Trash2 } from "lucide-react";
+import { BadgeCheck, Download, FileText, Plus, Printer, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { IconActionButton } from "@/components/icon-action-button";
@@ -222,14 +222,19 @@ function HistorialPage() {
           </h1>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por número, cliente..."
-            className="pl-9"
-          />
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <Button asChild className=".bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
+            <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo remito</Link>
+          </Button>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por número, cliente..."
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 

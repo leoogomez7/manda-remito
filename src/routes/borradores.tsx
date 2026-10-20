@@ -144,7 +144,7 @@ function BorradoresPage() {
         </div>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <Button asChild size="sm" className=".bg-gradient-to-r from-[#00E5FF] to-[#FF00D4] text-black">
-            <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo borrador</Link>
+            <Link to="/nueva"><Plus className="mr-2 h-4 w-4" />Nuevo remito</Link>
           </Button>
           <div className="relative w-full sm:w-72">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
